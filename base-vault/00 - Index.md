@@ -156,3 +156,4 @@ base evolve synth/synthesized_spec.yaml -o evolve/
 | 🧬 B.A.S.E. v2 | [[09 - B.A.S.E. v2 Expansion/09.00 - Index]] — Universal Hardware Reconstruction System |
 | 📊 Diagnóstico | [[09 - B.A.S.E. v2 Expansion/09.13 - Diagnostic]] — Assessment atual e prioridades |
 | 🔬 B.A.S.E. v3.1 | [[10 - B.A.S.E. v3.1 Evidence-Driven/10.00 - Index]] — Evidence-Driven Architecture |
+| ⚛ B.A.S.E. v3.2 | [[11 - B.A.S.E. v3.2 Scientific/11.00 - Index]] — Scientific Evolution |

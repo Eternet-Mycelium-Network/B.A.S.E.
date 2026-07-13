@@ -276,7 +276,7 @@ mod tests {
             registers: vec![],
             protocol: types::Protocol { states: vec!["idle".into(), "active".into(), "done".into()], transitions: vec![], entry_condition: None, exit_condition: None },
             timing: types::TimingProfile {
-                activation: Some(types::LatencyRange::new(100, 500)),
+                activation: Some(types::LatencyRange::new(100, 500, 300)),
                 processing: None, interrupt_response: None, dma_setup: None, polling_interval: None,
             },
             dma: Some(types::DmaRequirement { required: true, min_bandwidth_mbps: 400.0, alignment: 256, max_channels: 2 }),

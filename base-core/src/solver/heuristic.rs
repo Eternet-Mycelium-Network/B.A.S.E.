@@ -132,6 +132,7 @@ mod tests {
                     p
                 },
             },
+            timing: None, compatible_with: vec![],
             power: None, pins: None, availability: None,
         });
         db

@@ -4,6 +4,7 @@ pub mod component_db;
 pub mod mapping;
 pub mod graphviz;
 pub mod solver;
+pub mod kg;
 
 pub use spec::*;
 pub use inference::*;

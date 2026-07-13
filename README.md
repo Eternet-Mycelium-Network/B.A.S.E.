@@ -6,34 +6,21 @@
 
 > *"O que este hardware faz?" em vez de "Como este hardware foi implementado?"*
 
-11 crates · 12 fases · 80+ testes · Pipeline end-to-end
+**160 testes · 13 crates · 12 comandos CLI · 3 gerações de arquitetura**
 
 ---
 
 ## Pipeline
 
 ```bash
-Firmware → analyze → synth → pcb + fw → check → evolve
+Firmware → analyze → Evidence DB → BIR → Contracts → Solver → Reference Design
+                                                              ↓
+                                                         [PCB/FW — opcional]
 ```
-
-| Step | Command | Output |
-|------|---------|--------|
-| 1. Analyze | `base analyze firmware.bin --disasm` | `hardware_spec.yaml` + `behavior_graph.dot` + `event_graph.dot` |
-| 2. BIR | `base bir spec.bir.yaml --validate` | BIR validation + Graphviz DOT |
-| 3. Synthesize | `base synth hardware_spec.yaml` | `synthesized_spec.yaml` |
-| 4. PCB | `base pcb synthesized_spec.yaml --drc` | `.kicad_sch`, `.kicad_pcb`, `bom.csv` |
-| 5. Firmware | `base fw synthesized_spec.yaml --zephyr` | `bootloader.c`, `hal_mmio.c`, `drivers.c` |
-| 6. Validate | `base check spec trace.csv` | `validation_report.html` (com gráficos SVG) |
-| 7. Evolve | `base evolve spec` | `evolution_plan.md` |
-| 8. Reconstruct | `base reconstruct spec.yaml --threshold 0.9` | Loop recursivo até convergir |
-| **All** | `base pipeline firmware.bin --disasm` | Everything above |
 
 ## Quick Start
 
-### Pré-requisitos
-
 ```bash
-rustup toolchain install stable
 git clone https://github.com/Eternet-Mycelium-Network/B.A.S.E..git
 cd B.A.S.E.
 cargo build -p base-cli
@@ -44,139 +31,126 @@ cargo build -p base-cli
 ```bash
 base analyze firmware.bin --disasm --dot -o output/
 # → 520 funções desassembladas, 35K instruções, 757 MMIO candidates
-# → behavior_graph.dot (estrutural) + event_graph.dot (causal/temporal)
+# → behavior_graph.dot + event_graph.dot
 ```
 
 ### Pipeline completa
 
 ```bash
-base pipeline firmware.bin --disasm --trace traces.csv --target rp2350 -o output/
+base pipeline firmware.bin --disasm -o output/
 ```
 
-### Loop de refinamento recursivo
+### Replay de trace contra contratos
 
 ```bash
-base reconstruct output/01_analyze/hardware_spec.yaml --threshold 0.9 --max-iterations 10
+base replay trace.csv --contracts contracts.yaml
+# → contract_violations.json
+```
+
+### Prova formal via SMT
+
+```bash
+base prove contracts.yaml --deadlock
+# → deadlock_proof.smt
+```
+
+### Reference Design
+
+```bash
+base design hardware_spec.yaml
+# → reference_design.yaml (engineering draft)
+```
+
+### Event Graph causal
+
+```bash
+base event-graph contracts.yaml trace.csv --format dot
+# → event_graph.dot (WRITE → DMA_START → DMA_COMPLETE → IRQ)
 ```
 
 ### BIR — Behavioral IR
 
 ```bash
-# Validar BIR
-base bir device.bir.yaml --validate
-
-# Converter para HardwareSpec legado
-base bir device.bir.yaml --to-legacy
-
-# Exportar grafo
-base bir device.bir.yaml --dot
+base bir device.bir.yaml --validate --dot --to-legacy
 ```
 
-### BSL — Behavior Specification Language
-
-```bsl
-device GPU @ 0x10000000 {
-    registers {
-        CONTROL @ 0x00: rw = 0;
-        STATUS  @ 0x04: ro;
-    }
-    events {
-        DMA_START: write CONTROL[0] = 1;
-    }
-    interrupts {
-        IRQ_GPU: level high;
-    }
-    timing {
-        dma_setup: 100ns..400ns;
-    }
-    contract {
-        must_occur_before: DMA_START -> DMA_COMPLETE;
-        window: 10us;
-    }
-}
-```
-
-### HIL Probe (captura de hardware real)
+### Loop de refinamento recursivo
 
 ```bash
-# Gerar firmware para RP2350
-base hil probe-fw > hil_probe/src/main.rs
-
-# Conectar e capturar
-base hil capture --vid 0xCAFE --pid 0x4007 --output trace.pcap
-
-# Validar contra hardware real
-base check spec.yaml trace.pcap --mode hil
+base reconstruct spec.yaml --threshold 0.9 --max-iterations 10
 ```
+
+---
+
+## Commands
+
+| Comando | Descrição |
+|---------|-----------|
+| `analyze` | Analyze firmware → produce HardwareSpec + Evidence DB |
+| `synth` | Synthesize HardwareSpec → component mapping |
+| `pcb` | Generate KiCad PCB (engineering draft) |
+| `fw` | Generate bootloader, HAL, drivers, devicetree, Zephyr |
+| `check` | Validate new hardware against original traces |
+| `evolve` | Analyze bottlenecks and suggest upgrades |
+| `pipeline` | Run full end-to-end pipeline |
+| `reconstruct` | Recursive refinement loop until convergence |
+| `replay` | Replay trace against temporal contracts |
+| `prove` | Prove contracts via SMT (Z3) |
+| `design` | Generate reference design (saída principal) |
+| `event-graph` | Export causal event graph (DOT/Mermaid) |
+| `bir` | BIR: validate, compile, export |
+
+---
+
+## Arquitetura (v3.2 — Evidence-Driven + Scientific)
+
+```mermaid
+flowchart LR
+    FW[Firmware] --> SP[SpecterProbe<br/>Disassembly]
+    SP --> EVD[Evidence DB<br/>Fatos puros]
+    EVD --> BIR[BIR]
+    BIR --> TC[Temporal Contracts]
+    TC --> SOLVER[Contract Solver]
+    SOLVER --> RD[Reference Design]
+    RD --> PCB[PCB — Optional]
+    TC --> EG[Event Graph<br/>Causal]
+    CSV[Trace] --> REPLAY[Trace Replay]
+    TC --> REPLAY --> SMT[SMT Proving]
+```
+
+### Princípios
+
+| Geração | Abordagem | Status |
+|---------|-----------|--------|
+| v1 (Sprints 0-7) | Pipeline linear: analyze → synth → pcb → fw | ✅ |
+| v2 (12 Fases) | BIR + Knowledge Graph + Digital Twin + Feedback Loop | ✅ |
+| v3.1 (Evidence) | Evidence DB + Contract Solver + Reference Design | ✅ |
+| v3.2 (Scientific) | Temporal Contracts + Event Graph + Trace Replay + SMT | ✅ |
+
+---
 
 ## Casos de Uso
 
-### Preservação de Hardware
-ASICs de consoles retrô (Amiga CD32, SNES, Mega Drive) → PCB compatível com componentes disponíveis.
-
-### Modernização de Sistemas Legados
-Power Mac G5, DEC Alpha → hardware moderno (Cortex-A, DDR5, NVMe, USB-C) mantendo compatibilidade.
-
-### Fork de Hardware
-Xbox 360, PlayStation 3 → reconstruir comportamento em FPGA + MCU.
-
-## Arquitetura
-
-```
-┌──────────────────────────────────────────────────────┐
-│                    base-cli (CLI)                     │
-├──────────────────────────────────────────────────────┤
-│  base-bir  │  base-bsl  │  base-core                 │
-│  (IR)      │  (lang)    │  (inference + solver)      │
-│  base-pcb  │  base-fw   │  base-check  │  base-hil   │
-│  (KiCad)   │  (FW)      │  (validate)  │  (probe)    │
-│  base-evolve  │  base-learn                            │
-│  (evolution)  │  (ML models)                          │
-├──────────────────────────────────────────────────────┤
-│              specterprobe (disassembly)               │
-└──────────────────────────────────────────────────────┘
-```
+- **Preservação de Hardware**: ASICs de consoles retrô → PCB compatível
+- **Modernização**: Power Mac G5, DEC Alpha → Cortex-A + DDR5 + NVMe
+- **Fork de Hardware**: Xbox 360, PS3 → reconstruir em FPGA + MCU
 
 ## Crates
 
-| Crate | Descrição | Status |
-|-------|-----------|--------|
-| `specterprobe` | Disassembly ARM64 com Capstone, CFG, MMIO scan | ✅ |
-| `base-bir` | Behavioral IR — tipos, validador, contratos temporais | ✅ |
-| `base-bsl` | Behavior Specification Language — parser PEG + compiler | ✅ |
-| `base-core` | Inferência, Knowledge Graph, Digital Twin, Feedback Loop, Solver | ✅ |
-| `base-pcb` | Gerador KiCad — S-expression, schematic, BOM, PCB, DRC | ✅ |
-| `base-fw` | Firmware sintético — bootloader, HAL MMU, drivers, devicetree, Zephyr | ✅ |
-| `base-check` | Validação — trace Saleae/PCAP/JSON, comparator, HTML report | ✅ |
-| `base-evolve` | Evolução — bottleneck analysis, trade-offs, migration plans | ✅ |
-| `base-hil` | HIL Cluster — RP2350 probe firmware, host agent | ✅ |
-| `base-learn` | Foundation Models — dataset, classifier (rule-based + ONNX) | ✅ |
-| `base-cli` | CLI unificada — 8 subcomandos | ✅ |
-
-## B.A.S.E. v2 — 12 Fases Completas
-
-```
-Fase  0  ████████████████████████████ 100%  base-bir + base-bsl
-Fase  1  ████████████████████████████ 100%  BIR types + validator
-Fase  2  ████████████████████████████ 100%  Contratos temporais
-Fase  3  ████████████████████████████ 100%  Knowledge Graph (GraphML/Neo4j)
-Fase  4  ████████████████████████████ 100%  Genome DB (51 componentes + timing)
-Fase  5  ████████████████████████████ 100%  Constraint Solver (ILP + Z3 + heuristic)
-Fase  6  ████████████████████████████ 100%  HIL Cluster (RP2350 probe)
-Fase  7  ████████████████████████████ 100%  Multi-Source Learning
-Fase  8  ████████████████████████████ 100%  Digital Twin (BIR interpreter)
-Fase  9  ████████████████████████████ 100%  Closed Feedback Loop
-Fase 10  ████████████████████████████ 100%  Evolution Engine
-Fase 11  ████████████████████████████ 100%  BSL Language
-Fase 12  ████████████████████████████ 100%  Foundation Models
-```
-
-## Testes
-
-```bash
-cargo test --workspace
-# 80+ testes em 11 crates
-```
+| Crate | Tests | Descrição |
+|-------|-------|-----------|
+| `base-core` | 77 | Core: Evidence DB, BIR, Contracts, Solver, Digital Twin, KG, SMT |
+| `base-bir` | 13 | Behavioral IR: tipos, validador, contratos temporais |
+| `base-bsl` | 6 | BSL Language: parser, compiler |
+| `base-pcb` | 15 | Gerador KiCad: S-expression, schematic, BOM, PCB, DRC |
+| `base-fw` | 13 | Firmware sintético: bootloader, HAL, drivers, devicetree |
+| `base-check` | 20 | Validação: trace Saleae/PCAP/JSON, comparator, HTML report |
+| `base-evolve` | 7 | Evolução: bottleneck analysis, trade-offs, migration |
+| `base-cli` | 3 | CLI: 12 subcomandos |
+| `base-hil` | 6 | HIL Cluster: RP2350 probe firmware, host agent |
+| `base-bir` | — | Acima |
+| `specterprobe` | — | Disassembly ARM64: Capstone, CFG, MMIO scan |
+| **Total** | **160** | |
 
 ## Licença
 

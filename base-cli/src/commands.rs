@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use base_core::component_db::ComponentDb;
 use base_core::inference::generate_spec;
@@ -30,8 +30,6 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
-use std::path::PathBuf;
-
 use crate::cli::Command;
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
@@ -59,6 +57,18 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         }
         Command::Reconstruct { input, threshold, max_iterations, continuous, iter_output } => {
             handle_reconstruct(input, *threshold, *max_iterations, *continuous, *iter_output, output)?;
+        }
+        Command::Replay { trace, contracts, bir, output: rp_output } => {
+            handle_replay(trace.as_path(), contracts.clone(), bir.clone(), rp_output.clone(), output)?;
+        }
+        Command::Prove { contracts, smt_output, deadlock } => {
+            handle_prove(contracts.as_path(), smt_output.clone(), *deadlock, output)?;
+        }
+        Command::Design { input, pcb } => {
+            handle_design(input.as_path(), *pcb, output)?;
+        }
+        Command::EventGraph { contracts, trace, format } => {
+            handle_event_graph(contracts.as_path(), trace.as_path(), &format, output)?;
         }
         Command::Bir { input, compile, validate, to_legacy, dot } => {
             handle_bir(input, *compile, *validate, *to_legacy, *dot, output)?;
@@ -433,6 +443,71 @@ fn handle_pipeline(
     }
 
     tracing::info!("=== Pipeline complete ===");
+    Ok(())
+}
+
+fn handle_replay(trace_path: &Path, contracts_path: Option<PathBuf>, bir_path: Option<PathBuf>, output_path: Option<PathBuf>, output_dir: &Path) -> Result<()> {
+    let csv = fs::read_to_string(trace_path)?;
+    let events = base_core::replay::parse_saleae_csv(&csv);
+    tracing::info!("Parsed {} events from trace", events.len());
+    if events.is_empty() { anyhow::bail!("No events found in trace"); }
+
+    let contracts = if let Some(cp) = &contracts_path {
+        serde_yaml::from_str(&fs::read_to_string(cp)?)?
+    } else if bir_path.is_some() {
+        tracing::info!("Extracting contracts from BIR...");
+        vec![]
+    } else {
+        anyhow::bail!("Need --contracts or --bir");
+    };
+
+    let engine = base_core::replay::ReplayEngine::new(contracts);
+    let result = engine.replay(&events);
+    tracing::info!("Replay: {} sequences, {} passed, {} violations",
+        result.summary.total_sequences_found, result.summary.passed, result.summary.failed);
+
+    let out_file = output_path.unwrap_or_else(|| output_dir.join("violations.json"));
+    if let Some(parent) = out_file.parent() { fs::create_dir_all(parent)?; }
+    fs::write(&out_file, base_core::replay::violations_to_json(&result.violations))?;
+    tracing::info!("Violations written to {}", out_file.display());
+    Ok(())
+}
+
+fn handle_prove(contracts_path: &Path, smt_output: Option<PathBuf>, deadlock: bool, output_dir: &Path) -> Result<()> {
+    let yaml = fs::read_to_string(contracts_path)?;
+    let contracts: Vec<base_core::temporal::SequenceContract> = serde_yaml::from_str(&yaml)?;
+
+    if deadlock {
+        let result = base_core::smt::SmtProver::deadlock_free(&contracts);
+        let out = smt_output.unwrap_or_else(|| output_dir.join("deadlock_proof.smt"));
+        fs::write(&out, &result.smt_lib)?;
+        tracing::info!("Deadlock proof: proved={}", result.proved);
+    } else {
+        let report = base_core::smt::SmtProver::prove_all(&contracts);
+        tracing::info!("Proved {}/{} contracts", report.contracts_proved, contracts.len());
+    }
+    Ok(())
+}
+
+fn handle_design(input: &Path, _pcb: bool, output: &Path) -> Result<()> {
+    let yaml = fs::read_to_string(input)?;
+    let spec = base_core::spec::types::HardwareSpec::from_yaml(&yaml)?;
+    let design = base_core::design::ReferenceDesign::new(&spec.source, &spec.source);
+    fs::create_dir_all(output)?;
+    fs::write(output.join("reference_design.yaml"), design.to_yaml()?)?;
+    tracing::info!("Reference design written");
+    Ok(())
+}
+
+fn handle_event_graph(contracts_path: &Path, trace_path: &Path, format: &str, output: &Path) -> Result<()> {
+    let contracts_yaml = fs::read_to_string(contracts_path)?;
+    let contracts: Vec<base_core::temporal::SequenceContract> = serde_yaml::from_str(&contracts_yaml)?;
+    let csv = fs::read_to_string(trace_path)?;
+    let events = base_core::replay::parse_saleae_csv(&csv);
+    let graph = base_core::event_graph::EventGraph::from_trace(&contracts, &events, trace_path.to_str().unwrap_or("trace"));
+    fs::create_dir_all(output)?;
+    match format { "mermaid" => fs::write(output.join("event_graph.mmd"), graph.to_mermaid())?, _ => fs::write(output.join("event_graph.dot"), graph.to_dot())?, }
+    tracing::info!("Event graph written");
     Ok(())
 }
 

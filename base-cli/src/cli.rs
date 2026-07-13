@@ -170,6 +170,61 @@ pub enum Command {
         iter_output: bool,
     },
 
+    /// Replay trace against contracts
+    Replay {
+        /// Trace CSV file
+        trace: PathBuf,
+
+        /// Contracts YAML file (optional, extracted from BIR if not provided)
+        #[arg(long)]
+        contracts: Option<PathBuf>,
+
+        /// BIR YAML file (to extract contracts)
+        #[arg(long)]
+        bir: Option<PathBuf>,
+
+        /// Output violations JSON
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Prove contracts via SMT (Z3)
+    Prove {
+        /// Contracts YAML file
+        contracts: PathBuf,
+
+        /// Output SMT-LIB file
+        #[arg(long)]
+        smt_output: Option<PathBuf>,
+
+        /// Prove deadlock freedom
+        #[arg(long)]
+        deadlock: bool,
+    },
+
+    /// Generate reference design from HardwareSpec
+    Design {
+        /// Input HardwareSpec YAML
+        input: PathBuf,
+
+        /// Generate PCB (engineering draft)
+        #[arg(long)]
+        pcb: bool,
+    },
+
+    /// Export event graph (causal) from contracts + trace
+    EventGraph {
+        /// Contracts YAML file
+        contracts: PathBuf,
+
+        /// Trace CSV file
+        trace: PathBuf,
+
+        /// Output format (dot, mermaid)
+        #[arg(long, default_value = "dot")]
+        format: String,
+    },
+
     /// BIR: Behavioral IR manipulation
     Bir {
         /// Input file (BSL source, BIR YAML, or firmware)

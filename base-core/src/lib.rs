@@ -13,6 +13,7 @@ pub mod temporal;
 pub mod event_graph;
 pub mod replay;
 pub mod smt;
+pub mod tension;
 
 pub use spec::*;
 pub use inference::*;

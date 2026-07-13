@@ -276,6 +276,7 @@ fn esc_cypher(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::spec::types;
 
     fn sample_spec() -> HardwareSpec {
         let mut spec = HardwareSpec::empty();

@@ -12,9 +12,21 @@ pub struct ComponentEntry {
     pub category: ComponentCategory,
     pub package: Option<String>,
     pub features: ComponentFeatures,
+    pub timing: Option<ComponentTiming>,
+    #[serde(default)]
+    pub compatible_with: Vec<String>,
     pub power: Option<PowerSpec>,
     pub pins: Option<Vec<PinDef>>,
     pub availability: Option<Availability>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComponentTiming {
+    pub dma_setup_ns: Option<u64>,
+    pub gpio_toggle_ns: Option<u64>,
+    pub spi_speed_max_hz: Option<u64>,
+    pub i2c_speed_max_hz: Option<u64>,
+    pub cpu_fetch_ns: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -208,6 +220,14 @@ mod tests {
                     p
                 },
             },
+            timing: Some(ComponentTiming {
+                dma_setup_ns: Some(50),
+                gpio_toggle_ns: Some(5),
+                spi_speed_max_hz: Some(50_000_000),
+                i2c_speed_max_hz: Some(1_000_000),
+                cpu_fetch_ns: Some(8),
+            }),
+            compatible_with: vec!["RP2040".into()],
             power: Some(PowerSpec {
                 vcore: Some("1.1V".into()),
                 vccio: Some("3.3V".into()),

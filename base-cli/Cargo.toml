@@ -19,6 +19,7 @@ base-fw = { path = "../base-fw" }
 base-check = { path = "../base-check" }
 base-evolve = { path = "../base-evolve" }
 specter-probe = { path = "../specterprobe" }
+base-bir = { path = "../base-bir" }
 
 [[bin]]
 name = "base"

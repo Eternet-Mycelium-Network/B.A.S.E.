@@ -9,3 +9,5 @@
 *.kicad_pro
 *.kicad_prl
 *.kicad_pcb-bak
+
+*Firmware.zip

@@ -147,4 +147,26 @@ pub enum Command {
         #[arg(long, default_value_t = true)]
         disasm: bool,
     },
+
+    /// BIR: Behavioral IR manipulation
+    Bir {
+        /// Input file (BSL source, BIR YAML, or firmware)
+        input: PathBuf,
+
+        /// Compile BSL → BIR
+        #[arg(long)]
+        compile: bool,
+
+        /// Validate BIR
+        #[arg(long)]
+        validate: bool,
+
+        /// Convert BIR → HardwareSpec (legacy)
+        #[arg(long)]
+        to_legacy: bool,
+
+        /// Export Graphviz DOT
+        #[arg(long)]
+        dot: bool,
+    },
 }

@@ -187,6 +187,8 @@ pub fn generate_all(spec: &HardwareSpec, title: &str) -> (String, String) {
     (generate_behavior_dot(spec, title), generate_event_dot(spec, title))
 }
 
+
+
 // ─── Old API (backward compat) ─────────────────────────
 
 pub fn generate_dot(spec: &HardwareSpec, title: &str) -> String {

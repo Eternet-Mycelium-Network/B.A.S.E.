@@ -144,23 +144,46 @@ fn calculate_block_confidence(accesses: &[&MmioAccess], regs: &[RawRegister]) ->
     let mut score = 0.0f64;
     let mut factors = 0u32;
 
+    // Fator 1: Quantidade de registradores (quanto mais, mais confiança)
     if !regs.is_empty() {
-        score += (regs.len() as f64 / 8.0).min(1.0);
+        let reg_score = (regs.len() as f64 / 12.0).min(1.0);
+        score += reg_score;
         factors += 1;
     }
 
+    // Fator 2: Múltiplas funções acessando o mesmo bloco
     let unique_funcs: std::collections::HashSet<&str> = accesses.iter().map(|a| a.function_name.as_str()).collect();
-    if unique_funcs.len() >= 2 {
-        score += 0.3;
+    let func_score = (unique_funcs.len() as f64 / 3.0).min(1.0);
+    score += func_score * 0.25;
+    factors += 1;
+
+    // Fator 3: Volume de acessos
+    let access_score = (accesses.len() as f64 / 20.0).min(1.0);
+    score += access_score * 0.2;
+    factors += 1;
+
+    // Fator 4: Tipo classificado != Unknown (classificação confiante)
+    let classified = regs.iter().any(|r| !r.writes.is_empty() || !r.reads.is_empty());
+    if classified {
+        score += 0.25;
         factors += 1;
     }
 
-    if accesses.len() >= 5 {
-        score += 0.2;
-        factors += 1;
+    // Fator 5: Padrão de acesso consistente (writes e reads balanceados)
+    if !regs.is_empty() {
+        let total_writes: usize = regs.iter().map(|r| r.writes.len()).sum();
+        let total_reads: usize = regs.iter().map(|r| r.reads.len()).sum();
+        let total = total_writes + total_reads;
+        if total > 0 {
+            let balance = (total_writes as f64 / total as f64).min(total_reads as f64 / total as f64);
+            if balance > 0.2 {
+                score += 0.1;
+                factors += 1;
+            }
+        }
     }
 
-    if factors == 0 { 0.3 } else { (score / factors as f64).clamp(0.1, 0.99) }
+    if factors == 0 { 0.2 } else { (score / factors as f64 * 1.2).clamp(0.05, 0.99) }
 }
 
 /// Converte BlockType para BlockKind

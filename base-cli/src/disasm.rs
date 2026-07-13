@@ -3,6 +3,84 @@
 /// Em vez de escanear bytes brutos heuristicamente, usa Capstone para
 /// desassemblar o firmware ARM64 e encontrar acessos MMIO reais no código.
 use base_core::inference::extraction::{MmioAccess, MmioAccessType};
+use base_core::spec::types::{self, HardwareSpec};
+
+/// Converte BIR para HardwareSpec legado
+pub fn bir_to_legacy(device: &base_bir::types::BirDevice) -> HardwareSpec {
+    let kind = match device.name.to_lowercase() {
+        ref n if n.contains("gpu") => types::BlockKind::Gpu,
+        ref n if n.contains("audio") => types::BlockKind::Audio,
+        ref n if n.contains("dma") => types::BlockKind::Dma,
+        _ => types::BlockKind::Unknown,
+    };
+    let mut spec = HardwareSpec::empty();
+    spec.source = device.name.clone();
+    spec.blocks.push(types::FunctionalBlock {
+        id: device.name.clone(), kind,
+        base_address: device.base_address.unwrap_or(0), size: 0x1000,
+        registers: device.registers.iter().map(|r| types::Register {
+            offset: r.offset, name: Some(r.name.clone()), width: r.width,
+            access: match r.access {
+                base_bir::types::BirAccess::Read => types::AccessType::Read,
+                base_bir::types::BirAccess::Write => types::AccessType::Write,
+                base_bir::types::BirAccess::ReadWrite => types::AccessType::ReadWrite,
+                base_bir::types::BirAccess::WriteOnly => types::AccessType::WriteOnly,
+            },
+            purpose: types::RegisterPurpose::UnknownPurpose,
+            reset_value: r.reset_value, observed_values: vec![], bitfields: vec![],
+            polling: false, count: 0,
+        }).collect(),
+        protocol: types::Protocol { states: vec!["idle".into()], transitions: vec![], entry_condition: None, exit_condition: None },
+        timing: types::TimingProfile {
+            activation: None,
+            processing: device.timing.first().map(|t| types::LatencyRange {
+                min_ns: t.latency.min_ns, max_ns: t.latency.max_ns,
+                avg_ns: (t.latency.min_ns + t.latency.max_ns) / 2,
+                p99_ns: None, samples: 1,
+            }),
+            interrupt_response: None, dma_setup: None, polling_interval: None,
+        },
+        dma: None, dependencies: vec![], confidence: 0.8,
+    });
+    spec
+}
+
+/// Gera grafo DOT a partir de BIR
+pub fn bir_to_dot(device: &base_bir::types::BirDevice, title: &str) -> String {
+    let mut dot = String::new();
+    dot.push_str("// B.A.S.E. BIR Graph\n");
+    dot.push_str(&format!("digraph \"{}\" {{\n", title.replace('\"', "\\\"")));
+    dot.push_str("  rankdir=LR;\n  splines=ortho;\n");
+    dot.push_str("  node [shape=box, style=rounded, fontname=\"JetBrains Mono\"];\n\n");
+    let addr = device.base_address.map(|a| format!("@ 0x{:08x}", a)).unwrap_or_default();
+    dot.push_str(&format!("  device [label=<{}<br/><font point-size=\"9\">{}</font>>, fillcolor=\"#4a9eff\", style=filled, fontcolor=\"#fff\"];\n", device.name, addr));
+    for reg in &device.registers {
+        let rid = sanitize(&format!("reg_{}", reg.name));
+        dot.push_str(&format!("  {} [label=\"{}\\n+0x{:x}\", shape=note, style=filled, fillcolor=\"#e0e0e0\", fontsize=9];\n", rid, reg.name, reg.offset));
+        dot.push_str(&format!("  device -> {} [arrowhead=none, style=dotted];\n", rid));
+    }
+    for ev in &device.events {
+        let eid = sanitize(&format!("ev_{}", ev.name));
+        dot.push_str(&format!("  {} [label=\"{}\", shape=diamond, style=filled, fillcolor=\"#da77f2\", fontcolor=\"#fff\", fontsize=9];\n", eid, ev.name));
+        dot.push_str(&format!("  device -> {} [color=\"#da77f2\"];\n", eid));
+    }
+    for irq in &device.interrupts {
+        let iid = sanitize(&format!("irq_{}", irq.name));
+        dot.push_str(&format!("  {} [label=\"⚡ {}\\nvec{}\", shape=triangle, style=filled, fillcolor=\"#fcc419\", fontsize=9];\n", iid, irq.name, irq.vector));
+        dot.push_str(&format!("  device -> {} [color=\"#fcc419\"];\n", iid));
+    }
+    for t in &device.timing {
+        let tid = sanitize(&format!("tim_{}", t.name));
+        dot.push_str(&format!("  {} [label=\"⏱ {}\\n{}ns..{}ns\", shape=note, style=filled, fillcolor=\"#fff3bf\", fontsize=9];\n", tid, t.name, t.latency.min_ns, t.latency.max_ns));
+        dot.push_str(&format!("  device -> {} [style=dotted, color=\"#fab005\"];\n", tid));
+    }
+    dot.push_str("}\n");
+    dot
+}
+
+fn sanitize(s: &str) -> String {
+    s.replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+}
 
 /// Executa o pipeline completo: disassembly → MMIO discovery → inferência.
 pub fn analyze_with_disasm(data: &[u8]) -> Vec<MmioAccess> {

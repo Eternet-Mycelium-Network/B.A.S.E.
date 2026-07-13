@@ -30,32 +30,38 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
+use std::path::PathBuf;
+
 use crate::cli::Command;
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
     match cmd {
         Command::Analyze { firmware, mmio_traces, classify, dot, disasm } => {
-            handle_analyze(firmware, mmio_traces.as_deref(), classify.as_deref(), *dot, *disasm, output)
+            handle_analyze(firmware, mmio_traces.as_deref(), classify.as_deref(), *dot, *disasm, output)?;
         }
         Command::Synth { input, component_db, max_bom_cost } => {
-            handle_synth(input, component_db, *max_bom_cost, output)
+            handle_synth(input, component_db, *max_bom_cost, output)?;
         }
         Command::Pcb { input, project, drc } => {
-            handle_pcb(input, project, *drc, output)
+            handle_pcb(input, project, *drc, output)?;
         }
         Command::Fw { input, target, zephyr } => {
-            handle_fw(input, target, *zephyr, output)
+            handle_fw(input, target, *zephyr, output)?;
         }
         Command::Check { input, original_trace, new_trace, max_latency, format } => {
-            handle_check(input, original_trace, new_trace.as_deref(), *max_latency, format, output)
+            handle_check(input, original_trace, new_trace.as_deref(), *max_latency, format, output)?;
         }
         Command::Evolve { input, component_db, format } => {
-            handle_evolve(input, component_db, format, output)
+            handle_evolve(input, component_db, format, output)?;
         }
         Command::Pipeline { firmware, trace, target, drc, zephyr, no_evolve, disasm } => {
-            handle_pipeline(firmware, trace.as_deref(), target, *drc, *zephyr, *no_evolve, *disasm, output)
+            handle_pipeline(firmware, trace.as_deref(), target, *drc, *zephyr, *no_evolve, *disasm, output)?;
+        }
+        Command::Bir { input, compile, validate, to_legacy, dot } => {
+            handle_bir(input, *compile, *validate, *to_legacy, *dot, output)?;
         }
     }
+    Ok(())
 }
 
 // ─── Analyze ────────────────────────────────────────────
@@ -424,5 +430,50 @@ fn handle_pipeline(
     }
 
     tracing::info!("=== Pipeline complete ===");
+    Ok(())
+}
+
+fn handle_bir(input: &Path, compile: bool, validate: bool, to_legacy: bool, dot: bool, output: &Path) -> Result<()> {
+    let content = fs::read_to_string(input)?;
+    fs::create_dir_all(output)?;
+
+    if compile {
+        // BSL → BIR compilation requires base-bsl feature
+        anyhow::bail!("BSL compilation: add base-bsl dependency or use `base bir input.bir.yaml --validate`");
+    }
+
+    // Load BIR YAML for operations
+    let device = base_bir::types::BirDevice::from_yaml(&content)
+        .map_err(|e| anyhow::anyhow!("Invalid BIR YAML: {}", e))?;
+
+    if validate {
+        let result = device.validate();
+        tracing::info!("BIR validation: {} errors, {} warnings",
+            result.errors.len(), result.warnings.len());
+        for err in &result.errors {
+            tracing::warn!("  BIR error: {} ({})", err.message, err.location.as_deref().unwrap_or("?"));
+        }
+        for w in &result.warnings {
+            tracing::warn!("  BIR warning: {}", w);
+        }
+        let vpath = output.join("bir_validation.json");
+        fs::write(&vpath, serde_json::to_string_pretty(&result)?)?;
+        tracing::info!("Validation report: {}", vpath.display());
+    }
+
+    if to_legacy {
+        let spec = crate::disasm::bir_to_legacy(&device);
+        let path = output.join("hardware_spec.yaml");
+        fs::write(&path, spec.to_yaml()?)?;
+        tracing::info!("HardwareSpec written to {}", path.display());
+    }
+
+    if dot {
+        let dot_content = crate::disasm::bir_to_dot(&device, &input.to_string_lossy());
+        let path = output.join("bir_graph.dot");
+        fs::write(&path, dot_content)?;
+        tracing::info!("BIR DOT graph written to {}", path.display());
+    }
+
     Ok(())
 }

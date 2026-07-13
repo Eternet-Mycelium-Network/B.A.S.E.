@@ -10,6 +10,8 @@ members = [
     "base-cli",
     "base-bir",
     "base-bsl",
+    "base-hil",
+    "base-learn",
 ]
 
 [workspace.package]

@@ -243,6 +243,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "base-hil"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base-check",
+ "base-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "base-learn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base-core",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "base-pcb"
 version = "0.1.0"
 dependencies = [

@@ -8,8 +8,9 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **v0.2** ([Pilot Case Study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)) · **plano v0.3** ([Path to v0.3](base-vault/13%20-%20Path%20to%20v0.3/13.00%20-%20Index.md)):
-> análise auditável + Reference Design no wedge UART. **Não** é gerador de PCB fabricável nem substituto drop-in de ASIC.
+> **v0.3.0-rc** ([Path to v0.3](base-vault/13%20-%20Path%20to%20v0.3/13.00%20-%20Index.md) S0–S5) · baseline v0.2 ([Pilot Case Study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)):
+> Capstone UART + Z3 formal opcional + pins RP2040 + HIL EXPERIMENTAL. Demo: [Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) / `./examples/pilot/run_v03.sh`.
+> **Não** é gerador de PCB fabricável nem substituto drop-in de ASIC.
 
 ---
 

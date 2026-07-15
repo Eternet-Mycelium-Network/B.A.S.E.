@@ -2,9 +2,10 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v0.2 (Path to Real R6 ✅):** oferta **forense** liberada via
-> [Pilot Case Study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md) + `examples/pilot/`.
-> Port industrial = **consultoria** (humano no loop). Claims “PCB drop-in” / “ASIC substituído” continuam arquivados.
+> **Nota v0.3 (Path to v0.3 S0–S5):** oferta **forense** com Capstone UART, Z3 opcional (CI formal),
+> PCB pin-aware rotulado e HIL EXPERIMENTAL. Port industrial = **consultoria + [SOW](base-vault/13%20-%20Path%20to%20v0.3/13.21%20-%20SOW%20Industrial%20Template.md)**.
+> Playbook demo: [Forensic Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md).
+> Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” continuam arquivados.
 
 > Licença: AGPLv3 — uso comercial permitido; modificações em serviço de rede devem ser compartilhadas.
 > Uso proprietário fechado: licença comercial (consultar).
@@ -19,7 +20,7 @@
 | Empresa ≤ 10 funcionários | AGPLv3 | Gratuito |
 | Empresa > 10 funcionários (uso interno) | AGPLv3 | Gratuito (modificações públicas se serviço de rede) |
 | **Produto proprietário** | **Comercial** | **Consultar** |
-| **Serviço gerenciado (SaaS)** | **Comercial** | **Consultar** |
+| **Serviço gerenciado (SaaS)** | **Comercial** | **Consultar** — **não** disponível como turnkey em v0.3 |
 
 ---
 
@@ -30,15 +31,20 @@ Analisar firmware embedded sem código-fonte: IoT, roteadores, sensores.
 
 ### O que B.A.S.E. entrega hoje
 ```bash
+./examples/pilot/run.sh   # ou run_v03.sh (alias documentado)
 base analyze firmware.bin --disasm --dot -o analysis/
 base design analysis/hardware_spec.yaml -o analysis/design/
 base replay trace.csv --contracts contracts.yaml
 # → Evidence DB, HardwareSpec, Reference Design, violações de contrato
 ```
 
+Demo guiada: [Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) ·
+[Case study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md).
+
 ### Não inclui (ainda)
 - Prova criminal “pronta para tribunal” sem revisão humana
-- Z3 formal em todas as builds (simbólico default; Z3 opcional)
+- Z3 formal em todas as builds (simbólico default; Z3 via `solver_z3` + [formal.yml](.github/workflows/formal.yml))
+- Flash HIL automático sem probe detectado
 
 ### Precificação orientativa
 | Serviço | Preço |
@@ -48,18 +54,20 @@ base replay trace.csv --contracts contracts.yaml
 
 ---
 
-## Mercado 2 — Preservação Industrial (**consultoria + tool**)
+## Mercado 2 — Preservação Industrial (**consultoria + SOW**)
 
 ### Problema
-ASICs legados sem reposição.
+ASICs / MCUs legados sem reposição.
 
 ### Posicionamento honesto
 B.A.S.E. **acelera** diagnóstico e Reference Design. Port completo (PCB fabricável + FW em silício + certificação) é **projeto de engenharia** com humanos no loop — não um botão `pipeline`.
 
+Use o [SOW Industrial Template](base-vault/13%20-%20Path%20to%20v0.3/13.21%20-%20SOW%20Industrial%20Template.md): escopo / não-escopo / aceite.
+
 ```bash
 base analyze firmware.bin --disasm -o study/
 base design study/hardware_spec.yaml -o study/design/
-# → insumos para engenheiro; PCB gerado = engineering draft
+# → insumos para engenheiro; PCB gerado = engineering draft (pins anotados no wedge RP2040)
 ```
 
 ### Precificação orientativa
@@ -83,10 +91,10 @@ Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](e
 
 ---
 
-## Mercado 4 — SaaS (**pós v0.2**)
+## Mercado 4 — SaaS (**ainda adiado em v0.3**)
 
-Piloto documentado existe; SaaS permanece adiado até retenção / ops.
-Não vender “PCB + firmware prontos” no plano Starter.
+Piloto + playbook existem; SaaS permanece adiado até retenção / ops.
+Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” no plano Starter.
 
 ---
 
@@ -103,6 +111,7 @@ Não vender “PCB + firmware prontos” no plano Starter.
 
 ## Próximo passo imediato
 
-1. ✅ Path to Real R0–R6 + [case study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)
-2. Demo forense com `examples/pilot/run.sh`
-3. Pricing SaaS / port turnkey só com aceite industrial explícito
+1. ✅ Path to Real R0–R6 + case study v0.2
+2. ✅ Path to v0.3 S0–S5 (Capstone, formal, pins, HIL, oferta)
+3. Demo forense com playbook + `./examples/pilot/run.sh`
+4. Pricing SaaS / port turnkey só com aceite industrial explícito (SOW)

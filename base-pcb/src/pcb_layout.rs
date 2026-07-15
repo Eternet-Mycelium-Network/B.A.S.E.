@@ -189,11 +189,16 @@ pub fn generate_pcb_layout(spec: &SynthesizedSpec, netlist: &[NetSegment]) -> St
     let placements = placer.place(spec, netlist);
 
     let mut pcb = String::new();
+    pcb.push_str("; engineering_draft — NOT FABRICABLE\n");
     pcb.push_str("(kicad_pcb (version 20231121) (generator \"base-pcb\")\n");
     pcb.push_str("  (page \"A4\")\n");
     pcb.push_str(&format!(
         "  (setup (stackup (layer \"F.Cu\") (layer \"B.Cu\"))))\n"
     ));
+    pcb.push_str(
+        "  (gr_text \"engineering_draft — NOT FABRICABLE\" (at 100 10) (layer \"F.SilkS\")\n\
+           (effects (font (size 2 2) (thickness 0.3))))\n",
+    );
 
     // Gera footprints posicionados
     for (name, pos) in &placements {
@@ -264,6 +269,7 @@ mod tests {
         let netlist = vec![];
         let pcb = generate_pcb_layout(&spec, &netlist);
         assert!(pcb.contains("kicad_pcb"), "Should have KiCad header");
+        assert!(pcb.contains("NOT FABRICABLE"), "Draft banner required");
         assert!(pcb.contains("cpu"), "Should contain cpu footprint");
         assert!(pcb.contains("gpu"), "Should contain gpu footprint");
     }

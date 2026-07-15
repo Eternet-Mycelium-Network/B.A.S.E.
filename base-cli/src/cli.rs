@@ -123,7 +123,7 @@ pub enum Command {
         format: String,
     },
 
-    /// Run full pipeline: analyze → synth → pcb → fw → check → evolve
+    /// Run full pipeline: analyze → synth → design → fw → [check] → [pcb] → [evolve]
     Pipeline {
         /// Firmware file or directory to analyze
         firmware: PathBuf,
@@ -144,7 +144,11 @@ pub enum Command {
         #[arg(long, default_value = "rp2350")]
         target: String,
 
-        /// Run kicad-cli DRC validation
+        /// Opt-in: generate KiCad PCB draft (engineering_draft — NOT FABRICABLE)
+        #[arg(long, default_value_t = false)]
+        pcb: bool,
+
+        /// Run kicad-cli DRC validation (requires --pcb)
         #[arg(long)]
         drc: bool,
 
@@ -152,9 +156,9 @@ pub enum Command {
         #[arg(long)]
         zephyr: bool,
 
-        /// Skip evolution step
-        #[arg(long)]
-        no_evolve: bool,
+        /// Opt-in: run evolution engine (scaffold — off by default)
+        #[arg(long, default_value_t = false)]
+        evolve: bool,
 
         /// Use Capstone disassembly (real) instead of heuristic scan
         #[arg(long, default_value_t = true)]

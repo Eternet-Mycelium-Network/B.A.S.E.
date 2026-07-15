@@ -20,11 +20,11 @@ impl SchematicGenerator {
     pub fn generate(&self, spec: &SynthesizedSpec) -> String {
         let mut body = Vec::new();
 
-        // Title block
+        // Title block — draft label obrigatório (Path to Real R5)
         let title_block = sexpr("title_block")
-            .list(sexpr("title").atom("B.A.S.E. Generated"))
+            .list(sexpr("title").atom("engineering_draft — NOT FABRICABLE"))
             .list(sexpr("date").atom(&Local::now().format("%Y-%m-%d").to_string()))
-            .list(sexpr("rev").atom("1.0"))
+            .list(sexpr("rev").atom("draft"))
             .list(sexpr("company").atom("B.A.S.E."));
         body.push(title_block);
 
@@ -63,6 +63,7 @@ impl SchematicGenerator {
             .atom("(version 20231121)")
             .atom("(generator \"base-pcb\")");
         let mut output = String::new();
+        output.push_str("; engineering_draft — NOT FABRICABLE\n");
         output.push_str(&header.to_string(0));
         output.push('\n');
         for expr in &body {
@@ -214,7 +215,8 @@ mod tests {
         let spec = mock_spec();
         let sch = gen.generate(&spec);
         assert!(sch.contains("kicad_sch"), "Should have KiCad header");
-        assert!(sch.contains("B.A.S.E."), "Should have generator name");
+        assert!(sch.contains("NOT FABRICABLE"), "Draft banner required");
+        assert!(sch.contains("engineering_draft"), "Draft label required");
         assert!(sch.contains("RP2350A"), "Should contain RP2350A");
         assert!(sch.contains("PCM5102A"), "Should contain PCM5102A");
     }

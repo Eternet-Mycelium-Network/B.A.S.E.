@@ -52,6 +52,7 @@ Comandos avulsos: ver README raiz do repositório.
 
 ## Limitações honestas
 
+- **Host smoke ≠ silício** — `make host` / `firmware_host` só prova C gerado em host; não implica boot em MCU/FPGA
 - Parser Saleae só reconhece WRITE / READ / IRQ (não `dma_*` via CSV)
-- PCB não faz parte do `run.sh` de propósito
+- PCB não faz parte do `run.sh` de propósito (`pipeline --pcb` gera draft `NOT FABRICABLE`)
 - Classificação UART vem de `--classify uart` + traces, não de magic ML

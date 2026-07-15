@@ -71,9 +71,10 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
             new_trace,
             strict,
             target,
+            pcb,
             drc,
             zephyr,
-            no_evolve,
+            evolve,
             disasm,
         } => {
             handle_pipeline(
@@ -82,9 +83,10 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
                 new_trace.as_deref(),
                 *strict,
                 target,
+                *pcb,
                 *drc,
                 *zephyr,
-                *no_evolve,
+                *evolve,
                 *disasm,
                 output,
             )?;
@@ -602,20 +604,22 @@ fn handle_pipeline(
     new_trace: Option<&Path>,
     strict: bool,
     target: &str,
+    pcb: bool,
     drc: bool,
     zephyr: bool,
-    no_evolve: bool,
+    evolve: bool,
     disasm: bool,
     output: &Path,
 ) -> Result<()> {
     tracing::info!("=== B.A.S.E. Pipeline ===");
+    fs::create_dir_all(output)?;
 
     // Step 1: Analyze
-    tracing::info!("[1/6] Analyzing firmware...");
+    tracing::info!("[1] Analyzing firmware...");
     handle_analyze(firmware, None, None, true, disasm, &output.join("01_analyze"))?;
 
     // Step 2: Synth
-    tracing::info!("[2/6] Synthesizing hardware mapping...");
+    tracing::info!("[2] Synthesizing hardware mapping...");
     let component_db_path = Path::new("base-core/component_db");
     handle_synth(
         &output.join("01_analyze/hardware_spec.yaml"),
@@ -624,17 +628,16 @@ fn handle_pipeline(
         &output.join("02_synth"),
     )?;
 
-    // Step 3: PCB
-    tracing::info!("[3/6] Generating PCB...");
-    handle_pcb(
-        &output.join("02_synth/synthesized_spec.yaml"),
-        "project",
-        drc,
-        &output.join("03_pcb"),
+    // Step 3: Design (reference YAML — saída principal)
+    tracing::info!("[3] Reference design...");
+    handle_design(
+        &output.join("01_analyze/hardware_spec.yaml"),
+        false,
+        &output.join("03_design"),
     )?;
 
-    // Step 4: FW
-    tracing::info!("[4/6] Generating firmware...");
+    // Step 4: FW draft (host-testable)
+    tracing::info!("[4] Generating firmware draft...");
     handle_fw(
         &output.join("02_synth/synthesized_spec.yaml"),
         target,
@@ -643,7 +646,7 @@ fn handle_pipeline(
     )?;
 
     // Step 5: Check (never self-pass)
-    tracing::info!("[5/6] Validating...");
+    tracing::info!("[5] Validating...");
     if let Some(trace_path) = trace {
         handle_check(
             &output.join("02_synth/synthesized_spec.yaml"),
@@ -661,20 +664,63 @@ fn handle_pipeline(
         }
     }
 
-    // Step 6: Evolve
-    if !no_evolve {
-        tracing::info!("[6/6] Analyzing evolution...");
+    // Step 6: PCB — opt-in only (engineering draft)
+    if pcb {
+        tracing::info!("[6] Generating PCB engineering draft (--pcb)...");
+        handle_pcb(
+            &output.join("02_synth/synthesized_spec.yaml"),
+            "project",
+            drc,
+            &output.join("06_pcb"),
+        )?;
+    } else {
+        tracing::info!("[6] Skipping PCB (pass --pcb for engineering_draft)");
+    }
+
+    // Step 7: Evolve — opt-in scaffold
+    if evolve {
+        tracing::info!("[7] Analyzing evolution (--evolve)...");
         handle_evolve(
             &output.join("02_synth/synthesized_spec.yaml"),
             component_db_path,
             "md",
-            &output.join("06_evolution"),
+            &output.join("07_evolution"),
         )?;
     } else {
-        tracing::info!("[6/6] Skipping evolution (--no-evolve)");
+        tracing::info!("[7] Skipping evolution (pass --evolve to enable scaffold)");
     }
 
-    tracing::info!("=== Pipeline complete ===");
+    write_pipeline_summary(output, pcb, evolve, trace.is_some())?;
+    tracing::info!("=== Pipeline complete → {} ===", output.display());
+    Ok(())
+}
+
+fn write_pipeline_summary(output: &Path, pcb: bool, evolve: bool, checked: bool) -> Result<()> {
+    let mut md = String::from("# B.A.S.E. Pipeline SUMMARY\n\n");
+    md.push_str("- Stages:\n");
+    md.push_str("  - `01_analyze/` — HardwareSpec + Evidence + tension_report.json\n");
+    md.push_str("  - `02_synth/` — SynthesizedSpec + netlist nominal\n");
+    md.push_str("  - `03_design/` — Reference Design (engineering draft)\n");
+    md.push_str("  - `04_fw/` — host-testable C (`make host`); **host smoke ≠ silício**\n");
+    if checked {
+        md.push_str("  - `05_validation/` — dual check or skipped (no self-pass)\n");
+    } else {
+        md.push_str("  - `05_validation/` — skipped (no `--trace`)\n");
+    }
+    if pcb {
+        md.push_str(
+            "  - `06_pcb/` — KiCad **engineering_draft — NOT FABRICABLE**\n",
+        );
+    } else {
+        md.push_str("  - `06_pcb/` — not generated (use `--pcb`)\n");
+    }
+    if evolve {
+        md.push_str("  - `07_evolution/` — evolve scaffold (opt-in)\n");
+    } else {
+        md.push_str("  - `07_evolution/` — not generated (use `--evolve`)\n");
+    }
+    md.push_str("\nClaims proibidos neste draft: PCB fabricável, ASIC drop-in, host = target.\n");
+    fs::write(output.join("SUMMARY.md"), md)?;
     Ok(())
 }
 

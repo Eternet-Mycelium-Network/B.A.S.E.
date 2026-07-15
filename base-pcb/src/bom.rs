@@ -6,27 +6,30 @@ pub struct BomGenerator;
 impl BomGenerator {
     /// Gera CSV do BOM a partir de assignments
     pub fn generate(&self, spec: &SynthesizedSpec) -> String {
-        let mut csv = String::from("Ref,Qty,Part,Manufacturer,Interface,Block\n");
+        let mut csv = String::from(
+            "# engineering_draft — NOT FABRICABLE; Manufacturer=TBD means lookup pending\n\
+             Ref,Qty,Part,Manufacturer,Interface,Block,Notes\n",
+        );
 
         let mut ref_counter = 0u64;
         for assignment in &spec.assignments {
             ref_counter += 1;
             let ref_name = format!("U{}", ref_counter);
             csv.push_str(&format!(
-                "{},{},{},{},{},{}\n",
+                "{},{},{},{},{},{},\"TBD manufacturer — expand from component_db\"\n",
                 ref_name,
                 1,
                 assignment.component,
-                "TBD", // manufacturer from DB would need lookup
+                "TBD",
                 assignment.interface,
                 assignment.block_id,
             ));
         }
 
         // Passive components (always included)
-        csv.push_str("C1,1,100nF,Ceramic,Decoupling,Power\n");
-        csv.push_str("C2,1,10uF,Ceramic,Bulk,Power\n");
-        csv.push_str("R1,1,10k,Resistor,Pull-up,Interface\n");
+        csv.push_str("C1,1,100nF,Ceramic,Decoupling,Power,\"draft placeholder\"\n");
+        csv.push_str("C2,1,10uF,Ceramic,Bulk,Power,\"draft placeholder\"\n");
+        csv.push_str("R1,1,10k,Resistor,Pull-up,Interface,\"draft placeholder\"\n");
 
         csv
     }
@@ -94,7 +97,9 @@ mod tests {
         let csv = gen.generate(&spec);
         assert!(csv.contains("RP2350A"), "BOM should contain RP2350A");
         assert!(csv.contains("PCM5102A"), "BOM should contain PCM5102A");
-        assert!(csv.starts_with("Ref"), "BOM should have header");
+        assert!(csv.contains("NOT FABRICABLE"), "BOM draft note required");
+        assert!(csv.contains("TBD manufacturer"), "TBD must carry note");
+        assert!(csv.contains("Ref,Qty,Part"), "BOM should have header");
     }
 
     #[test]

@@ -10,7 +10,8 @@ use crate::evidence::{EvidenceDb, EvidenceType, EvidenceEntry};
 use crate::spec::types::{HardwareSpec, FunctionalBlock};
 
 /// Status de conclusão da análise
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Conclusiveness {
     ConclusiveMatch,     // ≥ 85% — é um match confiável
     ConclusiveNoMatch,   // ≤ 15% — definitivamente não é um match
@@ -18,7 +19,7 @@ pub enum Conclusiveness {
 }
 
 /// Resultado completo da análise de tensão
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TensionReport {
     pub overall_tension: f64,
     pub overall_confidence: f64,
@@ -30,7 +31,7 @@ pub struct TensionReport {
     pub block_tensions: Vec<BlockTension>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BlockTension {
     pub block_id: String,
     pub tension: f64,
@@ -39,7 +40,7 @@ pub struct BlockTension {
     pub components: TensionComponents,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TensionComponents {
     pub register_divergence: f64,
     pub access_divergence: f64,
@@ -243,6 +244,11 @@ impl TensionMetric {
         }
     }
 
+    /// Serializa o relatório para JSON (artefato `tension_report.json`).
+    pub fn to_json(report: &TensionReport) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(report)
+    }
+
     /// Relatório de diagnóstico em texto
     pub fn format_report(report: &TensionReport) -> String {
         let mut s = String::new();
@@ -392,5 +398,82 @@ mod tests {
         let text = TensionMetric::format_report(&report);
         assert!(text.contains("Tension Report"));
         assert!(text.contains("confidence"));
+    }
+
+    #[test]
+    fn test_more_evidence_lower_tension() {
+        // Mesmo bloco; sparse cobre metade dos regs, dense cobre todos (+ mass estrutural)
+        let mut spec = HardwareSpec::empty();
+        spec.blocks.push(FunctionalBlock {
+            id: "uart_0".into(),
+            kind: BlockKind::Uart,
+            base_address: 0x40034000,
+            size: 0x40,
+            registers: (0..8)
+                .map(|i| Register {
+                    offset: i * 4,
+                    name: Some(format!("r{}", i)),
+                    width: 32,
+                    access: AccessType::ReadWrite,
+                    purpose: RegisterPurpose::UnknownPurpose,
+                    reset_value: None,
+                    observed_values: vec![],
+                    bitfields: vec![],
+                    polling: false,
+                    count: 0,
+                })
+                .collect(),
+            protocol: Protocol {
+                states: vec![],
+                transitions: vec![],
+                entry_condition: None,
+                exit_condition: None,
+            },
+            timing: TimingProfile {
+                activation: Some(LatencyRange::new(100, 500, 300)),
+                processing: None,
+                interrupt_response: None,
+                dma_setup: None,
+                polling_interval: None,
+            },
+            dma: None,
+            dependencies: vec![],
+            confidence: 0.5,
+        });
+
+        let mut sparse = EvidenceDb::new("sparse");
+        for i in 0..2 {
+            sparse.add(EvidenceEntry {
+                id: format!("s{}", i),
+                evidence_type: EvidenceType::MmioWrite {
+                    address: 0x40034000 + i * 4,
+                    value: Some(1),
+                },
+                context: HashMap::new(),
+            });
+        }
+        let mut dense = EvidenceDb::new("dense");
+        for i in 0..8 {
+            dense.add(EvidenceEntry {
+                id: format!("d{}", i),
+                evidence_type: EvidenceType::MmioWrite {
+                    address: 0x40034000 + i * 4,
+                    value: Some(1),
+                },
+                context: HashMap::new(),
+            });
+        }
+
+        let low = TensionMetric::compute(&sparse, &spec, 5, 50, 1);
+        let high = TensionMetric::compute(&dense, &spec, 200, 8000, 400);
+        assert!(
+            high.overall_confidence > low.overall_confidence,
+            "aligned denser evidence should raise confidence: sparse={:.3}, dense={:.3}",
+            low.overall_confidence,
+            high.overall_confidence
+        );
+        let json = TensionMetric::to_json(&high).unwrap();
+        assert!(json.contains("overall_tension"));
+        assert!(json.contains("overall_confidence"));
     }
 }

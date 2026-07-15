@@ -22,7 +22,7 @@ use base_fw::zephyr::ZephyrGenerator;
 use base_check::tracer::TraceParser;
 use base_check::compare::OperationComparator;
 use base_check::metrics::ValidationThresholds;
-use base_check::report::ReportGenerator;
+use base_check::report::{ReportContext, ReportGenerator};
 
 use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
@@ -44,14 +44,50 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         Command::Fw { input, target, zephyr } => {
             handle_fw(input, target, *zephyr, output)?;
         }
-        Command::Check { input, original_trace, new_trace, max_latency, format } => {
-            handle_check(input, original_trace, new_trace.as_deref(), *max_latency, format, output)?;
+        Command::Check {
+            input,
+            original_trace,
+            new_trace,
+            max_latency,
+            format,
+            strict,
+        } => {
+            handle_check(
+                input,
+                original_trace,
+                new_trace.as_deref(),
+                *max_latency,
+                format,
+                *strict,
+                output,
+            )?;
         }
         Command::Evolve { input, component_db, format } => {
             handle_evolve(input, component_db, format, output)?;
         }
-        Command::Pipeline { firmware, trace, target, drc, zephyr, no_evolve, disasm } => {
-            handle_pipeline(firmware, trace.as_deref(), target, *drc, *zephyr, *no_evolve, *disasm, output)?;
+        Command::Pipeline {
+            firmware,
+            trace,
+            new_trace,
+            strict,
+            target,
+            drc,
+            zephyr,
+            no_evolve,
+            disasm,
+        } => {
+            handle_pipeline(
+                firmware,
+                trace.as_deref(),
+                new_trace.as_deref(),
+                *strict,
+                target,
+                *drc,
+                *zephyr,
+                *no_evolve,
+                *disasm,
+                output,
+            )?;
         }
         Command::Reconstruct { input, threshold, max_iterations, continuous, iter_output } => {
             handle_reconstruct(input, *threshold, *max_iterations, *continuous, *iter_output, output)?;
@@ -132,6 +168,34 @@ fn handle_analyze(firmware: &Path, mmio_traces: Option<&Path>, classify: Option<
         "Evidence DB written to {} ({} entries)",
         ev_path.display(),
         evidence.entries.len()
+    );
+
+    // Tension Ψ — auditável (Path to Real R4)
+    let fn_count = {
+        let mut names = std::collections::HashSet::new();
+        for a in &mmio_accesses {
+            names.insert(a.function_name.clone());
+        }
+        names.len()
+    };
+    let tension = base_core::tension::TensionMetric::compute(
+        &evidence,
+        &spec,
+        fn_count,
+        data.len(),
+        0,
+    );
+    let tension_path = output.join("tension_report.json");
+    fs::write(
+        &tension_path,
+        base_core::tension::TensionMetric::to_json(&tension)?,
+    )?;
+    tracing::info!(
+        "Tension Ψ written to {} (ψ={:.4}, confidence={:.2}%, {:?})",
+        tension_path.display(),
+        tension.overall_tension,
+        tension.overall_confidence * 100.0,
+        tension.conclusiveness
     );
 
     if dot {
@@ -363,6 +427,7 @@ fn handle_check(
     new_trace: Option<&Path>,
     max_latency: f64,
     format: &str,
+    strict: bool,
     output: &Path,
 ) -> Result<()> {
     let yaml = fs::read_to_string(input)?;
@@ -371,43 +436,124 @@ fn handle_check(
     let original = TraceParser::parse(original_trace)?;
     tracing::info!("Parsed original trace: {} events", original.events.len());
 
-    let actual = match new_trace {
-        Some(p) => {
-            let t = TraceParser::parse(p)?;
-            tracing::info!("Parsed new trace: {} events", t.events.len());
-            t
+    fs::create_dir_all(output)?;
+    let gen = ReportGenerator;
+
+    // Optional Ψ from sibling analyze output
+    let tension_json = load_optional_tension(input);
+
+    let Some(new_path) = new_trace else {
+        let msg = "NO_NEW_TRACE: dual comparison skipped (refusing self-pass). Provide new_trace or use --strict to fail.";
+        tracing::warn!("{}", msg);
+        if strict {
+            anyhow::bail!("{}", msg);
         }
-        None => original.clone(), // compare with itself for baseline
+        let mut ctx = ReportContext::skipped(
+            &original_trace.display().to_string(),
+            max_latency,
+            msg,
+        );
+        ctx.tension = tension_json;
+        write_validation_report(&gen, &[], &spec.original.source, format, &ctx, output)?;
+        tracing::info!("Validation skipped — report written (comparison_mode=skipped)");
+        return Ok(());
     };
+
+    let actual = TraceParser::parse(new_path)?;
+    tracing::info!("Parsed new trace: {} events", actual.events.len());
 
     let thresholds = ValidationThresholds {
         max_latency_ratio: max_latency,
         ..ValidationThresholds::default()
     };
 
-    let items = OperationComparator::compare(
-        &original, &actual, &spec.original, &thresholds,
+    let items = OperationComparator::compare(&original, &actual, &spec.original, &thresholds);
+
+    let mut ctx = ReportContext::dual(
+        &original_trace.display().to_string(),
+        &new_path.display().to_string(),
+        max_latency,
     );
+    ctx.tension = tension_json;
 
-    let gen = ReportGenerator;
-    fs::create_dir_all(output)?;
-
-    match format {
-        "json" => {
-            let json = gen.generate_json(&items, &spec.original.source);
-            fs::write(output.join("validation_report.json"), &json)?;
-        }
-        _ => {
-            let html = gen.generate_html(&items, &spec.original.source);
-            fs::write(output.join("validation_report.html"), &html)?;
-        }
-    }
+    write_validation_report(&gen, &items, &spec.original.source, format, &ctx, output)?;
 
     let passed = items.iter().filter(|i| i.passed).count();
     let total = items.len();
-    tracing::info!("Validation: {}/{} passed ({:.1}%)", passed, total, passed as f64 / total.max(1) as f64 * 100.0);
+    let rate = passed as f64 / total.max(1) as f64;
+    tracing::info!(
+        "Validation: {}/{} passed ({:.1}%)",
+        passed,
+        total,
+        rate * 100.0
+    );
+
+    if strict && rate < 1.0 {
+        anyhow::bail!(
+            "strict validation failed: {}/{} operations passed",
+            passed,
+            total
+        );
+    }
 
     Ok(())
+}
+
+fn write_validation_report(
+    gen: &ReportGenerator,
+    items: &[base_check::compare::ComparisonItem],
+    title: &str,
+    format: &str,
+    ctx: &ReportContext,
+    output: &Path,
+) -> Result<()> {
+    match format {
+        "json" => {
+            let json = gen.generate_json_with_context(items, title, ctx);
+            fs::write(output.join("validation_report.json"), &json)?;
+        }
+        "both" => {
+            let json = gen.generate_json_with_context(items, title, ctx);
+            fs::write(output.join("validation_report.json"), &json)?;
+            let html = gen.generate_html_with_context(items, title, ctx);
+            fs::write(output.join("validation_report.html"), &html)?;
+        }
+        _ => {
+            let html = gen.generate_html_with_context(items, title, ctx);
+            fs::write(output.join("validation_report.html"), &html)?;
+            // JSON always for CI auditability
+            let json = gen.generate_json_with_context(items, title, ctx);
+            fs::write(output.join("validation_report.json"), &json)?;
+        }
+    }
+    Ok(())
+}
+
+fn load_optional_tension(synth_input: &Path) -> Option<serde_json::Value> {
+    // Prefer ../analyze/tension_report.json or sibling tension_report.json
+    let candidates = [
+        synth_input
+            .parent()
+            .map(|p| p.join("tension_report.json")),
+        synth_input
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("analyze/tension_report.json")),
+        synth_input
+            .parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("01_analyze/tension_report.json")),
+    ];
+    for opt in candidates.into_iter().flatten() {
+        if opt.exists() {
+            if let Ok(text) = fs::read_to_string(&opt) {
+                if let Ok(v) = serde_json::from_str(&text) {
+                    return Some(v);
+                }
+            }
+        }
+    }
+    None
 }
 
 // ─── Evolve ─────────────────────────────────────────────
@@ -453,6 +599,8 @@ fn handle_evolve(input: &Path, component_db: &Path, format: &str, output: &Path)
 fn handle_pipeline(
     firmware: &Path,
     trace: Option<&Path>,
+    new_trace: Option<&Path>,
+    strict: bool,
     target: &str,
     drc: bool,
     zephyr: bool,
@@ -494,19 +642,23 @@ fn handle_pipeline(
         &output.join("04_fw"),
     )?;
 
-    // Step 5: Check
+    // Step 5: Check (never self-pass)
     tracing::info!("[5/6] Validating...");
     if let Some(trace_path) = trace {
         handle_check(
             &output.join("02_synth/synthesized_spec.yaml"),
             trace_path,
-            None,
+            new_trace,
             2.0,
-            "html",
+            "both",
+            strict,
             &output.join("05_validation"),
         )?;
     } else {
-        tracing::warn!("Skipping validation (no trace provided)");
+        tracing::warn!("Skipping validation (no --trace provided)");
+        if strict {
+            anyhow::bail!("strict pipeline: --trace required for check");
+        }
     }
 
     // Step 6: Evolve

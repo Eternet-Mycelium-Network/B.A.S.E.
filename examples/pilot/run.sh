@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# B.A.S.E. Pilot — UART MMIO wedge (synthetic) — Path to Real R0–R3
+# B.A.S.E. Pilot — UART MMIO wedge (synthetic) — Path to Real R0–R4
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BASE="${ROOT}/target/debug/base"
@@ -28,6 +28,21 @@ echo "== design =="
 
 echo "== synth =="
 "$BASE" synth "$OUT/analyze/hardware_spec.yaml" --max-bom-cost 80 -o "$OUT/synth"
+
+echo "== check (skip without new_trace) =="
+"$BASE" check "$OUT/synth/synthesized_spec.yaml" "$PILOT/trace.csv" \
+  --format json -o "$OUT/check_skip"
+grep -q 'NO_NEW_TRACE' "$OUT/check_skip/validation_report.json"
+grep -q '"comparison_mode": "skipped"' "$OUT/check_skip/validation_report.json"
+
+echo "== check (dual: original vs slow) =="
+"$BASE" check "$OUT/synth/synthesized_spec.yaml" "$PILOT/trace.csv" \
+  "$PILOT/trace_slow.csv" --format json --max-latency 2.0 -o "$OUT/check_dual"
+grep -q '"comparison_mode": "dual"' "$OUT/check_dual/validation_report.json"
+grep -q 'TIMING_VIOLATION' "$OUT/check_dual/validation_report.json"
+
+test -f "$OUT/analyze/tension_report.json"
+grep -q 'overall_tension' "$OUT/analyze/tension_report.json"
 
 echo "== prove (sat) =="
 "$BASE" prove "$PILOT/contracts.yaml" -o "$OUT/prove"

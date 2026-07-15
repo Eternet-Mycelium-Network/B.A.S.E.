@@ -92,7 +92,8 @@ pub enum Command {
         /// Original trace file (CSV or JSON)
         original_trace: PathBuf,
 
-        /// New hardware trace file (CSV or JSON)
+        /// New hardware trace file (CSV or JSON). Required for dual compare.
+        /// Sem isto o check NÃO self-compara — gera relatório skipped + WARN.
         new_trace: Option<PathBuf>,
 
         /// Max allowed latency ratio
@@ -102,6 +103,10 @@ pub enum Command {
         /// Output report format (html, json)
         #[arg(long, default_value = "html")]
         format: String,
+
+        /// Fail if `new_trace` is missing (no silent skip / no self-pass)
+        #[arg(long, default_value_t = false)]
+        strict: bool,
     },
 
     /// Analyze bottlenecks and suggest upgrades
@@ -126,6 +131,14 @@ pub enum Command {
         /// Original trace for validation
         #[arg(long)]
         trace: Option<PathBuf>,
+
+        /// New hardware trace (dual compare). Sem isto, check é skipped (WARN).
+        #[arg(long)]
+        new_trace: Option<PathBuf>,
+
+        /// Fail pipeline check if `--trace` exists but `--new-trace` missing
+        #[arg(long, default_value_t = false)]
+        strict: bool,
 
         /// Target platform
         #[arg(long, default_value = "rp2350")]

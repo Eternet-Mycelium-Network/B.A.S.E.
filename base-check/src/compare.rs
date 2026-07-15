@@ -56,7 +56,8 @@ impl OperationComparator {
             if !value_match {
                 failures.push("VALUE_MISMATCH".into());
             }
-            if latency_ratio > thresholds.max_latency_ratio {
+            let type_key = format!("{:?}", orig.event_type);
+            if latency_ratio > thresholds.latency_for(&type_key) {
                 failures.push("TIMING_VIOLATION".into());
             }
 
@@ -167,5 +168,24 @@ mod tests {
         assert!(groups.contains_key("MmioWrite"), "Should have MmioWrite group");
         assert!(groups.contains_key("MmioRead"), "Should have MmioRead group");
         assert!(groups.contains_key("Interrupt"), "Should have Interrupt group");
+    }
+
+    #[test]
+    fn delayed_trace_triggers_timing_violation() {
+        let orig = mock_trace("orig");
+        let mut slow = mock_trace("slow");
+        for e in &mut slow.events {
+            e.timestamp_ns = e.timestamp_ns.saturating_mul(10);
+        }
+        let spec = HardwareSpec::empty();
+        let thresholds = ValidationThresholds {
+            max_latency_ratio: 2.0,
+            ..ValidationThresholds::default()
+        };
+        let items = OperationComparator::compare(&orig, &slow, &spec, &thresholds);
+        assert!(
+            items.iter().any(|i| i.failures.iter().any(|f| f == "TIMING_VIOLATION")),
+            "10× delayed timestamps should violate latency ratio"
+        );
     }
 }

@@ -11,3 +11,5 @@
 *.kicad_pcb-bak
 
 *Firmware.zip
+*.pdf
+

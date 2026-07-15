@@ -1,8 +1,11 @@
-/// HIL Cluster — hardware probe firmware template + host agent.
-///
-/// O probe é um RP2350 com firmware Rust (rp-hal) que captura
-/// barramentos paralelos via PIO e envia traces USB para o base-check.
-pub mod probe;
-pub mod agent;
+//! HIL Cluster — **EXPERIMENTAL** template (host agent + gerador de stub de firmware).
+//!
+//! - Compila e testa no host **sem** hardware.
+//! - Não flashea silício sem [`agent::ProbePresence::Detected`].
+//! - Não entra no `base pipeline` default.
 
-pub use agent::HilAgent;
+pub mod agent;
+pub mod probe;
+
+pub use agent::{HilAgent, HilSample, ProbePresence};
+pub use probe::ProbeFirmware;

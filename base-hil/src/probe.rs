@@ -1,13 +1,15 @@
-/// RP2350 Probe Firmware Template — gera o firmware Rust para o probe.
+/// RP2350 Probe Firmware Template — gera **esqueleto** Rust (não certificado / não CI-cross).
 ///
-/// O probe captura barramentos paralelos via PIO e envia pela USB.
+/// EXPERIMENTAL: o texto gerado documenta a intenção PIO+USB; não é compilado
+/// no workspace default (falta target embutido e HAL).
 pub struct ProbeFirmware;
 
 impl ProbeFirmware {
     pub fn generate() -> String {
         let mut code = String::new();
-        code.push_str("// B.A.S.E. HIL Probe Firmware — RP2350\n");
-        code.push_str("// Gera um probe de hardware para captura de barramentos\n\n");
+        code.push_str("// B.A.S.E. HIL Probe Firmware — RP2350 [EXPERIMENTAL stub]\n");
+        code.push_str("// NÃO é firmware de produção. NÃO flashear sem revisão + probe Detected.\n");
+        code.push_str("// Captura paralela via PIO → USB (esqueleto).\n\n");
         code.push_str("#![no_std]\n");
         code.push_str("#![no_main]\n\n");
         code.push_str("use rp235x_hal as hal;\n");
@@ -92,6 +94,7 @@ mod tests {
     fn test_probe_firmware_generation() {
         let fw = ProbeFirmware::generate();
         assert!(fw.contains("RP2350"));
+        assert!(fw.contains("EXPERIMENTAL"));
         assert!(fw.contains("PIO"));
         assert!(fw.contains("USB"));
         assert!(fw.contains("HIL Probe"));

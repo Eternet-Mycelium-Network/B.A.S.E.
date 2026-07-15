@@ -26,6 +26,12 @@ jobs:
       - name: Run all tests
         run: cargo test --workspace
 
+      - name: HIL template (EXPERIMENTAL, host-only)
+        run: |
+          cargo test -p base-hil
+          cargo build -p base-hil
+          # compile-only — sem probe USB; flash real é rejeitado pela API
+
       - name: Pilot smoke (Path to Real v0.2 / R0–R6)
         timeout-minutes: 15
         run: |

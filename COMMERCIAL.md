@@ -2,9 +2,9 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v0.2 (Path to Real):** ofertas abaixo distinguem o que o software entrega
-> sozinho vs. o que exige engenheiro humano. Claims de “PCB drop-in” / “ASIC substituído”
-> estão **arquivados** até o piloto R6 e aceite de cliente industrial.
+> **Nota v0.2 (Path to Real R6 ✅):** oferta **forense** liberada via
+> [Pilot Case Study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md) + `examples/pilot/`.
+> Port industrial = **consultoria** (humano no loop). Claims “PCB drop-in” / “ASIC substituído” continuam arquivados.
 
 > Licença: AGPLv3 — uso comercial permitido; modificações em serviço de rede devem ser compartilhadas.
 > Uso proprietário fechado: licença comercial (consultar).
@@ -83,9 +83,9 @@ Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](e
 
 ---
 
-## Mercado 4 — SaaS (**depois do R6**)
+## Mercado 4 — SaaS (**pós v0.2**)
 
-Adiado até existir piloto documentado e Maturity Matrix estável.
+Piloto documentado existe; SaaS permanece adiado até retenção / ops.
 Não vender “PCB + firmware prontos” no plano Starter.
 
 ---
@@ -103,6 +103,6 @@ Não vender “PCB + firmware prontos” no plano Starter.
 
 ## Próximo passo imediato
 
-1. Executar Path to Real R0–R6 (`base-vault/12 - Path to Real/`)
-2. Publicar case study do wedge MCU ARM
-3. Só então reabrir pricing SaaS / port turnkey
+1. ✅ Path to Real R0–R6 + [case study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)
+2. Demo forense com `examples/pilot/run.sh`
+3. Pricing SaaS / port turnkey só com aceite industrial explícito

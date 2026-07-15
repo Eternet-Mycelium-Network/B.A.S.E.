@@ -1,58 +1,56 @@
-# Pilot fixture — Path to Real (R0)
+# Pilot fixture — Path to Real v0.2 (R6)
 
 Wedge sintético de **UART MMIO estilo PL011** em `0x40034000`.
 
 Este diretório **não** reivindica um SoC real. O `fw.bin` é placeholder;
 a fonte da verdade comportamental é `mmio.json` + `trace.csv` + `contracts.yaml`.
 
-## Wedge decidido (R0)
+**Case study (vault):** [`12.20 - Pilot Case Study`](../../base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)
+
+## Wedge
 
 | Campo | Valor |
 |-------|-------|
 | Classe | MCU / peripheral MMIO (ARM-like) |
 | Peripheral | UART @ `0x40034000` |
-| Por quê | Endereços estáveis, tipos Saleae (WRITE/READ/IRQ), encaixa Capstone/heurística |
-| Fora de escopo | GPU, high-speed SerDes, Power Mac / Xbox / Alpha |
-| R6 | Trocar `fw.bin` por firmware real no mesmo padrão MMIO |
-
-Vault: `base-vault/12 - Path to Real/12.16 - Sprint R6 Pilot.md`
+| Por quê | Endereços estáveis, tipos Saleae (WRITE/READ/IRQ) |
+| Fora de escopo | GPU, SerDes HS, Power Mac / Xbox / Alpha |
+| v0.3+ | Trocar `fw.bin` por firmware real (mesmo padrão MMIO) |
 
 ## Arquivos
 
 | Arquivo | Papel |
 |---------|-------|
 | `fw.bin` | Placeholder binário (pequeno) |
+| `SHA256SUMS` | Integridade das fixtures |
 | `mmio.json` | Acessos MMIO (ground truth para `analyze --mmio-traces`) |
 | `pilot.bsl` | Spec BSL → BIR + contratos Saleae |
-| `trace.csv` | Trace pass (Saleae-like) |
-| `trace_fail.csv` | Trace com latência acima do contrato |
-| `contracts.yaml` | Contratos manuais (SAT) |
-| `contracts.unsat.yaml` | Fixture UNSAT para `prove` |
-| `run.sh` | Smoke E2E (bir → analyze → prove → replay → event-graph → fw) |
+| `trace.csv` / `trace_fail.csv` / `trace_slow.csv` | Pass / fail / latency inject |
+| `contracts.yaml` / `contracts.unsat.yaml` | SAT + UNSAT |
+| `run.sh` | Smoke E2E R0–R6 → `out/CASE_SUMMARY.md` |
 | `out/` | Gerado (gitignored) |
-| `expected/` | Goldens (fields, schema, event_graph) |
+| `expected/` | Goldens + template CASE_SUMMARY |
 
 ## Como rodar
 
 ```bash
 cargo build -p base-cli
-chmod +x examples/pilot/run.sh
+cd examples/pilot && sha256sum -c SHA256SUMS && cd ../..
 ./examples/pilot/run.sh
 ```
 
-Comandos avulsos: ver README raiz do repositório.
-
 ## Esperado no smoke
 
-- `out/analyze/hardware_spec.yaml` + `evidence_db.yaml`
-- `out/design/reference_design.yaml` com CPU ≠ TBD
-- `out/prove/proof_report.json` com contratos SAT
-- `out/prove_unsat/` com `proved: false`
+- `out/analyze/` — HardwareSpec + Evidence + `tension_report.json`
+- `out/design/reference_design.yaml` — CPU MCU ≠ TBD, contratos ≥70%
+- `out/prove*` — SAT e UNSAT honestos
+- `out/check_skip` / `check_dual` — sem self-pass; TIMING_VIOLATION no dual
 - `out/fw/firmware_host` exit 0
+- `out/CASE_SUMMARY.md`
 
 ## Limitações honestas
 
-- **Host smoke ≠ silício** — `make host` / `firmware_host` só prova C gerado em host; não implica boot em MCU/FPGA
-- Parser Saleae só reconhece WRITE / READ / IRQ (não `dma_*` via CSV)
-- PCB não faz parte do `run.sh` de propósito (`pipeline --pcb` gera draft `NOT FABRICABLE`)
-- Classificação UART vem de `--classify uart` + traces, não de magic ML
+- **Host smoke ≠ silício**
+- Parser Saleae: WRITE / READ / IRQ
+- PCB fora do `run.sh` (`pipeline --pcb` → `NOT FABRICABLE`)
+- Classificação UART: `--classify uart` + traces

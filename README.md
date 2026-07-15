@@ -1,14 +1,14 @@
 # B.A.S.E. — Behavioral ASIC Synthesis Engine
 
-[![CI](https://github.com/Eternet-Mycelium-Network/B.A.S.E./actions/workflows/ci.yml/badge.svg)](https://github.com/Eternet-Mycelium-Network/B.A.S.E./actions/workflows/ci.yml)
+[![CI](https://github.com/bmcc-DEV/B.A.S.E./actions/workflows/ci.yml/badge.svg)](https://github.com/bmcc-DEV/B.A.S.E./actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE.md)
 
 > *"O que este hardware faz?" em vez de "Como este hardware foi implementado?"*
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **v0.2 em construção** ([Path to Real](base-vault/12%20-%20Path%20to%20Real/12.00%20-%20Index.md)):
-> análise auditável + design de referência. **Não** é (ainda) gerador de PCB fabricável nem substituto drop-in de ASIC.
+> **v0.2** ([Path to Real](base-vault/12%20-%20Path%20to%20Real/12.00%20-%20Index.md) · [Pilot Case Study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md)):
+> análise auditável + Reference Design no wedge UART. **Não** é gerador de PCB fabricável nem substituto drop-in de ASIC.
 
 ---
 
@@ -23,7 +23,8 @@ Fonte da verdade: vault Obsidian → [**Maturity Matrix**](base-vault/12%20-%20P
 | `replay` / `prove` (simbólico) / `event-graph` / `bir` | Auditável com fixtures |
 | `fw` | Skeleton **host-testable** (`make host`) — não firmware de produção |
 | `pcb` | **Engineering draft** KiCad — *not fabricable* |
-| `evolve` / pipeline completa “ASIC pronto” | Experimental / overclaim — evitar |
+| `pipeline` | Orquestra estágios verdes; `--pcb` / `--evolve` opt-in |
+| `evolve` | Scaffold — off por default |
 
 Plano de execução: [Master Plan](base-vault/12%20-%20Path%20to%20Real/12.01%20-%20Master%20Plan.md) · [Sprint Board](base-vault/12%20-%20Path%20to%20Real/12.04%20-%20Sprint%20Board.md)
 
@@ -42,7 +43,7 @@ Firmware → analyze → Evidence DB → BIR → Contracts → Solver → Refere
 ## Quick Start
 
 ```bash
-git clone https://github.com/Eternet-Mycelium-Network/B.A.S.E..git
+git clone https://github.com/bmcc-DEV/B.A.S.E..git
 cd B.A.S.E.
 cargo build -p base-cli
 ```
@@ -50,18 +51,10 @@ cargo build -p base-cli
 ### Piloto (fixtures — start here)
 
 ```bash
-# Ver examples/pilot/README.md
+# Case study: base-vault/12 - Path to Real/12.20 - Pilot Case Study.md
 cargo build -p base-cli
-./target/debug/base analyze examples/pilot/fw.bin \
-  --mmio-traces examples/pilot/mmio.json --classify uart \
-  -o examples/pilot/out/analyze
-./target/debug/base design examples/pilot/out/analyze/hardware_spec.yaml \
-  -o examples/pilot/out/design
-./target/debug/base prove examples/pilot/contracts.yaml \
-  -o examples/pilot/out/prove
-./target/debug/base replay examples/pilot/trace.csv \
-  --contracts examples/pilot/contracts.yaml \
-  -o examples/pilot/out/violations.json
+./examples/pilot/run.sh
+# → examples/pilot/out/CASE_SUMMARY.md
 ```
 
 ### Análise
@@ -133,7 +126,7 @@ confidence = max(0, 1 - Ψ/(1+Ψ))
 | Forense / segurança | **Wedge principal** — Evidence + contratos + design |
 | Educação / pesquisa | Pipeline visual + Ψ |
 | Preservação industrial | Consultoria humana + tool assist — não turnkey |
-| SaaS PME | Depois do piloto Path to Real (R6) |
+| SaaS PME | Depois de adoção do case study v0.2 |
 
 Detalhes: [`COMMERCIAL.md`](COMMERCIAL.md).
 

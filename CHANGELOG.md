@@ -1,14 +1,21 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`.
 
-## [Unreleased] — Path to v0.9
+## [v0.9.0-rc] — 2026-07-16
+
+Path to v0.9 Y0–Y5: I2C1 pins + goldens I2C + triple USART/SPI/I2C + oferta docs.
+Smoke verde: `run.sh`, `run_t1_b2.sh`, `pilot_stm32/run.sh`, `run_w1_spi.sh`, `run_x3_i2c.sh`, `run_y3_triple.sh`.
 
 ### Added
 - Y1: pins I2C1 STM32F103C8 (PB6 SCL / PB7 SDA) + labels no draft sch; matcher `scl`/`sda`
 - Y2: goldens I2C STM32 — `expected_i2c/` event-graph + prove; `run_x3_i2c.sh` `diff`; teste `pilot_stm32_i2c_goldens`
 - Y3: triple STM32 USART1+SPI2+I2C1 — `run_y3_triple.sh`, `mmio_usart_spi_i2c.json`, teste `pilot_stm32_triple`
 - Y4: playbook + SOW checklist v0.9 + COMMERCIAL sync
+- Y5: tag `v0.9.0-rc`
+
+### Not
+- PCB fabricável, ASIC drop-in, SaaS turnkey, HIL production, auto-fix completa, Amiga/CD32 como wedge de release
 
 ## [v0.8.0] — 2026-07-16
 

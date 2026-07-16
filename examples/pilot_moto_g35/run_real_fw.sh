@@ -75,6 +75,14 @@ echo "== platform inventory (DTBO + vendor_boot) =="
   --flash-cfg "$DEST/flash.cfg" \
   -o "$OUT/platform_vendor_boot"
 
+echo "== phylogeny N-a-N (lk / boot / kernel) =="
+"$BASE" paleo phylo \
+  "$OUT/analyze_lk/evidence_db.yaml" \
+  "$OUT/analyze_boot/evidence_db.yaml" \
+  "$OUT/analyze_kernel/evidence_db.yaml" \
+  --delta-t 1.0 --delta-t 2.0 --delta-t 3.0 \
+  -o "$OUT/phylo"
+
 python3 - <<'PY' "$OUT"
 import json, re, sys, yaml
 from pathlib import Path
@@ -114,6 +122,18 @@ lines.append(
     "Required classes: cpu, gic, arm_generic_timer, mmu, dram_controller, uart, "
     "gpio, pmic, storage_emmc_ufs, gpu_framebuffer, device_tree\n"
 )
+phy = out / "phylo" / "PHYLO_ATLAS.md"
+if phy.exists():
+    lines.append("\n## Filogenia (lk / boot / kernel)\n\n")
+    nwk = (out / "phylo" / "tree.nwk").read_text().strip()
+    lines.append(f"- Newick: `{nwk}`\n")
+    plat = yaml.safe_load((out / "phylo" / "phylo.yaml").read_text())
+    for p in plat.get("pairs", []):
+        lines.append(
+            f"- `{p['a']}`↔`{p['b']}`: d_φ={p['d_phi']:.3f} J_geno={p['geno_jaccard']:.3f} "
+            f"Φ={p['pheno_similarity']:.3f} shared={p['shared_fossils']}\n"
+        )
+    lines.append("- ver `phylo/PHYLO_ATLAS.md`\n")
 lines.append("\n## Primary atlas\n\n")
 lines.append("- **Use `port_package_lk/` first** — Capstone MMIO real, Ψ ConclusiveMatch\n")
 lines.append("- `PORT_PACKAGE.md`, `address_driver_map.yaml`, `fossil_inventory.yaml`, `hal_mmio_stub.c`\n")
@@ -122,6 +142,7 @@ lines.append("- Boot/kernel packages are heuristic-heavy (many Reverse labels) �
 lines.append("\n## Honesty\n\n")
 lines.append("- `generates_os: false` · `auto_fix_complete: false`\n")
 lines.append("- Platform inventory ≠ OS bootable / TaurOS turnkey\n")
+lines.append("- Filogenia ≠ prova de plágio; d_φ usa bandas SoC + fenótipo quando páginas divergem\n")
 lines.append("- Firmware.zip / real_fw/ gitignored — not redistributed by this repo\n")
 lines.append("- status: OK\n")
 (out/"CASE_SUMMARY_REAL_FW.md").write_text("".join(lines))
@@ -131,3 +152,4 @@ PY
 echo "Real FW port assist OK → $OUT"
 echo "Open: $OUT/port_package_lk/PORT_PACKAGE.md"
 echo "Open: $OUT/platform_dtbo/PLATFORM_INVENTORY.md"
+echo "Open: $OUT/phylo/PHYLO_ATLAS.md"

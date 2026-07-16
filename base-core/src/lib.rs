@@ -25,6 +25,7 @@ pub use strat_align::{
 };
 pub use paleo::{excavate, ObservablesOmega, PaleoExcavateResult};
 pub use phylo::{
-    corpus_fossil_frequency, phylo_distance, phylogeny_from_evidence, reconstruct_phylogeny,
+    address_band, corpus_fossil_frequency, phenotype_from_evidence, phenotype_similarity,
+    phylo_distance, phylo_distance_weighted, phylogeny_from_evidence, reconstruct_phylogeny,
     Genotype, PhyloParams, PhyloResult,
 };

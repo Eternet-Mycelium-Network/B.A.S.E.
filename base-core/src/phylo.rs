@@ -8,9 +8,26 @@
 use crate::evidence::EvidenceDb;
 use crate::paleo::ObservablesOmega;
 use crate::spec::types::HardwareSpec;
-use crate::strat_align::{FossilAtom, FossilPersistence, FossilSequence, StratAligner};
+use crate::strat_align::{FossilAtom, FossilPersistence, FossilSequence};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+
+/// Banda de endereço SoC (fósseis ancestrais quando páginas exactas divergem).
+pub fn address_band(addr: u64) -> &'static str {
+    if addr < 0x0010_0000 {
+        "band:vector_or_low"
+    } else if addr < 0x1000_0000 {
+        "band:sram_or_lowmap"
+    } else if addr < 0x8000_0000 {
+        "band:soc_mid"
+    } else if addr < 0xa000_0000 {
+        "band:soc_high_a"
+    } else if addr < 0xc000_0000 {
+        "band:unisoc_a9_af"
+    } else {
+        "band:high_c0"
+    }
+}
 
 /// Carga de linhagem λ(f) ∈ (0, 1] — decai quando o fóssil se espalha pelo corpus.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,22 +59,27 @@ impl Genotype {
         let seq = FossilSequence::from_evidence(db);
         let mut loci = Vec::with_capacity(seq.atoms.len() * 2);
         let mut pages: HashSet<u64> = HashSet::new();
-        for atom in seq.atoms {
+        let mut bands: HashSet<&'static str> = HashSet::new();
+        for atom in &seq.atoms {
             if let Some(r) = atom.region {
                 pages.insert(r);
+                bands.insert(address_band(r));
             }
+        }
+        for atom in seq.atoms {
             let freq = corpus_freq
                 .and_then(|m| m.get(&atom.id).copied())
                 .unwrap_or(1)
                 .max(1);
-            // λ decai com presença em variantes distantes / frequentes no corpus
             let spread = freq as f64 / corpus_size.max(1) as f64;
             let base = 1.0 - atom.persistence.erosion_rate() * 0.5;
             let lambda = (base * (1.0 - 0.7 * spread)).clamp(0.05, 1.0);
             let omega_tag = format!(
                 "{:?}:{}",
                 atom.persistence,
-                atom.region.map(|r| format!("{r:#x}")).unwrap_or_else(|| "-".into())
+                atom.region
+                    .map(|r| format!("{r:#x}"))
+                    .unwrap_or_else(|| "-".into())
             );
             loci.push(GenotypeLocus {
                 fossil: atom,
@@ -65,7 +87,7 @@ impl Genotype {
                 lineage_load: lambda,
             });
         }
-        // Fósseis de página (ancestrais): permitem linhagem SoC sem match exacto de reg
+        // Páginas (resilientes)
         for page in pages {
             let id = format!("page:{page:#x}");
             let freq = corpus_freq
@@ -80,6 +102,22 @@ impl Genotype {
                 lineage_load: lambda,
             });
         }
+        // Bandas SoC (ancestrais profundos — sobrevivem a plasticidade de mapeamento)
+        for band in bands {
+            let freq = corpus_freq
+                .and_then(|m| m.get(band).copied())
+                .unwrap_or(1)
+                .max(1);
+            let spread = freq as f64 / corpus_size.max(1) as f64;
+            let lambda = (0.95 * (1.0 - 0.4 * spread)).clamp(0.2, 1.0);
+            loci.push(GenotypeLocus {
+                fossil: FossilAtom::new(band, FossilPersistence::Ancestral),
+                omega_tag: band.into(),
+                lineage_load: lambda,
+            });
+        }
+        // Fenótipo mínimo a partir da evidência se spec ausente
+        let phenotype = phenotype.or_else(|| Some(phenotype_from_evidence(db)));
         Self {
             label: db.source.clone(),
             loci,
@@ -92,12 +130,85 @@ impl Genotype {
         self.loci.iter().map(|l| l.fossil.id.clone()).collect()
     }
 
+    /// Fósseis ancestrais (bandas + páginas) — base do Jaccard genotípico estável.
+    pub fn ancestral_ids(&self) -> HashSet<String> {
+        self.loci
+            .iter()
+            .filter(|l| {
+                l.fossil.persistence == FossilPersistence::Ancestral
+                    || l.fossil.id.starts_with("band:")
+                    || l.fossil.id.starts_with("page:")
+            })
+            .map(|l| l.fossil.id.clone())
+            .collect()
+    }
+
+    pub fn band_ids(&self) -> HashSet<String> {
+        self.loci
+            .iter()
+            .filter(|l| l.fossil.id.starts_with("band:"))
+            .map(|l| l.fossil.id.clone())
+            .collect()
+    }
+
+    pub fn page_ids(&self) -> HashSet<String> {
+        self.loci
+            .iter()
+            .filter(|l| l.fossil.id.starts_with("page:"))
+            .map(|l| l.fossil.id.clone())
+            .collect()
+    }
+
     pub fn lambda_map(&self) -> HashMap<String, f64> {
         self.loci
             .iter()
             .map(|l| (l.fossil.id.clone(), l.lineage_load))
             .collect()
     }
+}
+
+/// Φ mínimo só com EvidenceDb (sem HardwareSpec).
+pub fn phenotype_from_evidence(db: &EvidenceDb) -> ObservablesOmega {
+    let mut irq = 0usize;
+    let mut dma = 0usize;
+    let mut calls = 0usize;
+    for e in &db.entries {
+        match &e.evidence_type {
+            crate::evidence::EvidenceType::Irq { .. } => irq += 1,
+            crate::evidence::EvidenceType::Dma { .. } => dma += 1,
+            crate::evidence::EvidenceType::FunctionCall { .. } => calls += 1,
+            _ => {}
+        }
+    }
+    let n = db.count().max(1);
+    let h_local = (1.0 + db.count() as f64).ln();
+    ObservablesOmega {
+        block_count: 0,
+        evidence_count: db.count(),
+        unique_mmio: db.unique_mmio_addresses().len(),
+        irq_count: irq,
+        dma_count: dma,
+        call_count: calls,
+        dim_cfg: n,
+        h_local,
+    }
+}
+
+/// Similaridade fenotípica ∈ [0,1] entre dois Ω.
+pub fn phenotype_similarity(a: &ObservablesOmega, b: &ObservablesOmega) -> f64 {
+    fn nr(x: f64, y: f64) -> f64 {
+        let d = (x - y).abs();
+        let s = x.max(y).max(1.0);
+        1.0 - (d / s).min(1.0)
+    }
+    let parts = [
+        nr(a.unique_mmio as f64, b.unique_mmio as f64),
+        nr(a.evidence_count as f64, b.evidence_count as f64),
+        nr(a.h_local, b.h_local),
+        nr(a.irq_count as f64, b.irq_count as f64),
+        nr(a.dma_count as f64, b.dma_count as f64),
+    ];
+    parts.iter().sum::<f64>() / parts.len() as f64
 }
 
 /// Constrói mapa de frequência de fósseis num corpus.
@@ -109,6 +220,7 @@ pub fn corpus_fossil_frequency(dbs: &[&EvidenceDb]) -> HashMap<String, usize> {
         for a in &seq.atoms {
             if let Some(r) = a.region {
                 ids.insert(format!("page:{r:#x}"));
+                ids.insert(address_band(r).to_string());
             }
         }
         for id in ids {
@@ -118,42 +230,72 @@ pub fn corpus_fossil_frequency(dbs: &[&EvidenceDb]) -> HashMap<String, usize> {
     freq
 }
 
-/// Distância filogenética d_φ(Bᵢ, Bⱼ) = Ψ · exp(−λ̄ · Δt).
+/// Distância filogenética d_φ(Bᵢ, Bⱼ) = Ψ · exp(−λ̄ · Δt)
+/// com Ψ híbrido: genótipo (Jaccard bandas/páginas/ids) + fenótipo Φ.
 pub fn phylo_distance(gi: &Genotype, gj: &Genotype) -> PhyloPairStats {
-    let seq_i = FossilSequence::new(
-        gi.label.clone(),
-        gi.loci.iter().map(|l| l.fossil.clone()).collect(),
-    );
-    let seq_j = FossilSequence::new(
-        gj.label.clone(),
-        gj.loci.iter().map(|l| l.fossil.clone()).collect(),
-    );
-    let align = StratAligner::default().align(&seq_i, &seq_j);
-    let psi = align.raw_tension;
+    phylo_distance_weighted(gi, gj, 0.65)
+}
 
-    let ids_i = gi.fossil_ids();
-    let ids_j = gj.fossil_ids();
-    let shared: Vec<&str> = ids_i.intersection(&ids_j).map(|s| s.as_str()).collect();
+/// `geno_weight` ∈ [0,1]: peso do genótipo no Ψ (resto = fenótipo).
+pub fn phylo_distance_weighted(gi: &Genotype, gj: &Genotype, geno_weight: f64) -> PhyloPairStats {
+    fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
+        if a.is_empty() && b.is_empty() {
+            return 0.0;
+        }
+        let inter = a.intersection(b).count() as f64;
+        let uni = a.union(b).count() as f64;
+        if uni == 0.0 {
+            0.0
+        } else {
+            inter / uni
+        }
+    }
+
+    let bands_i = gi.band_ids();
+    let bands_j = gj.band_ids();
+    let pages_i = gi.page_ids();
+    let pages_j = gj.page_ids();
+    // Bandas dominam (SoC); páginas afinam quando há overlap exacto
+    let j_band = jaccard(&bands_i, &bands_j);
+    let j_page = jaccard(&pages_i, &pages_j);
+    let geno_jaccard = 0.75 * j_band + 0.25 * j_page;
+
+    let shared_anc: HashSet<_> = gi
+        .ancestral_ids()
+        .intersection(&gj.ancestral_ids())
+        .cloned()
+        .collect();
+
+    let pheno_sim = match (&gi.phenotype, &gj.phenotype) {
+        (Some(a), Some(b)) => phenotype_similarity(a, b),
+        _ => 0.5,
+    };
+
+    let w = geno_weight.clamp(0.0, 1.0);
+    let hybrid_sim = w * geno_jaccard + (1.0 - w) * pheno_sim;
+    let psi = (1.0 - hybrid_sim).clamp(0.0, 1.0);
+
     let li = gi.lambda_map();
     let lj = gj.lambda_map();
-    let lambda_bar = if shared.is_empty() {
+    let lambda_bar = if shared_anc.is_empty() {
         0.0
     } else {
-        shared
+        shared_anc
             .iter()
             .map(|id| {
-                let a = li.get(*id).copied().unwrap_or(0.0);
-                let b = lj.get(*id).copied().unwrap_or(0.0);
+                let a = li.get(id).copied().unwrap_or(0.0);
+                let b = lj.get(id).copied().unwrap_or(0.0);
                 (a + b) * 0.5
             })
             .sum::<f64>()
-            / shared.len() as f64
+            / shared_anc.len() as f64
     };
 
-    let delta_t = (gi.stratum_delta_t - gj.stratum_delta_t)
-        .abs()
-        .max(1.0);
-    let d_phi = psi * (-lambda_bar * delta_t).exp();
+    let delta_t = (gi.stratum_delta_t - gj.stratum_delta_t).abs().max(1.0);
+    let d_phi = psi * (-lambda_bar * delta_t * 0.2).exp();
+    let d_tree = psi;
+
+    let speciation_candidate = geno_jaccard < 0.15 && pheno_sim >= 0.55 && d_phi >= 0.35;
 
     PhyloPairStats {
         a: gi.label.clone(),
@@ -162,8 +304,12 @@ pub fn phylo_distance(gi: &Genotype, gj: &Genotype) -> PhyloPairStats {
         lambda_bar,
         delta_t,
         d_phi,
-        shared_fossils: shared.len(),
-        strat_similarity: align.normalized_similarity,
+        d_tree,
+        shared_fossils: shared_anc.len(),
+        strat_similarity: geno_jaccard,
+        geno_jaccard,
+        pheno_similarity: pheno_sim,
+        speciation_candidate,
     }
 }
 
@@ -174,9 +320,16 @@ pub struct PhyloPairStats {
     pub psi: f64,
     pub lambda_bar: f64,
     pub delta_t: f64,
+    /// d_φ = Ψ · exp(−λ̄·Δt·0.2) — distância anotada (relógio)
     pub d_phi: f64,
+    /// Distância usada no Neighbor-Joining (= Ψ híbrido)
+    pub d_tree: f64,
     pub shared_fossils: usize,
+    /// Alias histórico = geno_jaccard
     pub strat_similarity: f64,
+    pub geno_jaccard: f64,
+    pub pheno_similarity: f64,
+    pub speciation_candidate: bool,
 }
 
 /// Evento de transferência horizontal de código (THC).
@@ -221,6 +374,7 @@ pub struct PhyloResult {
     pub newick: String,
     pub thc_events: Vec<ThcEvent>,
     pub homoplasy_events: Vec<HomoplasyEvent>,
+    pub speciation_events: Vec<PhyloPairStats>,
     pub honesty: &'static str,
 }
 
@@ -257,8 +411,8 @@ pub fn reconstruct_phylogeny(genotypes: &[Genotype], params: &PhyloParams) -> Ph
     for i in 0..n {
         for j in (i + 1)..n {
             let stats = phylo_distance(&genotypes[i], &genotypes[j]);
-            matrix[i][j] = stats.d_phi;
-            matrix[j][i] = stats.d_phi;
+            matrix[i][j] = stats.d_tree;
+            matrix[j][i] = stats.d_tree;
             pairs.push(stats);
         }
     }
@@ -266,6 +420,11 @@ pub fn reconstruct_phylogeny(genotypes: &[Genotype], params: &PhyloParams) -> Ph
     let (tree, newick) = neighbor_joining(&matrix, &labels);
     let thc_events = detect_thc(genotypes, &pairs, params);
     let homoplasy_events = detect_homoplasy(genotypes, &pairs, params);
+    let speciation_events: Vec<PhyloPairStats> = pairs
+        .iter()
+        .filter(|p| p.speciation_candidate)
+        .cloned()
+        .collect();
 
     PhyloResult {
         claim: "computational_phylogeny_assist",
@@ -279,6 +438,7 @@ pub fn reconstruct_phylogeny(genotypes: &[Genotype], params: &PhyloParams) -> Ph
         newick,
         thc_events,
         homoplasy_events,
+        speciation_events,
         honesty: "Filogenia assist — d_φ/THC heurísticos; ≠ prova de plágio · ≠ auto-fix",
     }
 }
@@ -594,12 +754,32 @@ impl PhyloResult {
         md.push_str("> A Paleocomputação mapeia o que restou. A Filogenia mapeia o que se transmite.\n\n");
         md.push_str(&format!("## Newick\n\n```\n{}\n```\n\n", self.newick));
         md.push_str("## Distâncias d_φ\n\n");
-        md.push_str("| A | B | Ψ | λ̄ | Δt | d_φ | shared |\n|---|---|---|---|---|---|--------|\n");
+        md.push_str("| A | B | Ψ | J_geno | Φ_sim | λ̄ | Δt | d_φ | shared | spec? |\n|---|---|---|---|---|---|---|---|---|---|\n");
         for p in &self.pairs {
             md.push_str(&format!(
-                "| `{}` | `{}` | {:.3} | {:.3} | {:.2} | **{:.3}** | {} |\n",
-                p.a, p.b, p.psi, p.lambda_bar, p.delta_t, p.d_phi, p.shared_fossils
+                "| `{}` | `{}` | {:.3} | {:.3} | {:.3} | {:.3} | {:.2} | **{:.3}** | {} | {} |\n",
+                p.a,
+                p.b,
+                p.psi,
+                p.geno_jaccard,
+                p.pheno_similarity,
+                p.lambda_bar,
+                p.delta_t,
+                p.d_phi,
+                p.shared_fossils,
+                if p.speciation_candidate { "yes" } else { "—" }
             ));
+        }
+        md.push_str("\n## Especiação (fork / plasticidade)\n\n");
+        if self.speciation_events.is_empty() {
+            md.push_str("- (nenhum candidato)\n");
+        } else {
+            for e in &self.speciation_events {
+                md.push_str(&format!(
+                    "- `{}` ↔ `{}` · J_geno={:.3} · Φ={:.3} · d_φ={:.3} — genótipo diverge, fenótipo correlaciona\n",
+                    e.a, e.b, e.geno_jaccard, e.pheno_similarity, e.d_phi
+                ));
+            }
         }
         md.push_str("\n## THC (transferência horizontal)\n\n");
         if self.thc_events.is_empty() {
@@ -707,36 +887,75 @@ mod tests {
     fn related_lineages_closer_than_unrelated() {
         let a = db_with("v1", &[0x1000, 0x1004, 0x1008, 0x2000]);
         let b = db_with("v2", &[0x1000, 0x1004, 0x1008, 0x2004]); // patch
-        let c = db_with("other", &[0x9000, 0x9004, 0x9008, 0x9010]);
+        // banda distinta (unisoc) — sem overlap de band com v1/v2
+        let c = db_with("other", &[0xa900_0000, 0xa901_0000, 0xa902_0000, 0xa903_0000]);
         let dbs = [&a, &b, &c];
-        let r = phylogeny_from_evidence(&dbs, &[None, None, None], &[1.0, 2.0, 10.0], &PhyloParams::default());
+        let r = phylogeny_from_evidence(&dbs, &[None, None, None], &[1.0, 1.0, 1.0], &PhyloParams::default());
         let d_ab = r.pairs.iter().find(|p| {
             (p.a == "v1" && p.b == "v2") || (p.a == "v2" && p.b == "v1")
-        }).unwrap().d_phi;
+        }).unwrap().d_tree;
         let d_ac = r.pairs.iter().find(|p| {
             (p.a.contains("v1") && p.b.contains("other"))
                 || (p.a.contains("other") && p.b.contains("v1"))
-        }).unwrap().d_phi;
+        }).unwrap().d_tree;
         assert!(
             d_ab < d_ac,
-            "related d_φ={d_ab} should be < unrelated d_φ={d_ac}"
+            "related d_tree={d_ab} should be < unrelated d_tree={d_ac}"
         );
         assert!(r.newick.ends_with(';'));
         assert!(!r.generates_os);
     }
 
     #[test]
-    fn newick_three_taxa() {
-        let a = db_with("A", &[1, 2, 3]);
-        let b = db_with("B", &[1, 2, 4]);
-        let c = db_with("C", &[1, 5, 6]);
+    fn soc_band_boot_closer_to_kernel_than_lk() {
+        // Espelha G35: LK lowmap vs boot/kernel Unisoc bands
+        let lk = db_with(
+            "lk",
+            &[0x1000, 0x2000, 0x3000, 0x0010_0000],
+        );
+        let boot = db_with(
+            "boot",
+            &[0x2000_1000, 0xa900_0000, 0xa901_0000, 0xb000_0000],
+        );
+        let kern = db_with(
+            "kern",
+            &[0x2100_0000, 0xa902_0000, 0xa910_0000, 0xc000_1000],
+        );
         let r = phylogeny_from_evidence(
-            &[&a, &b, &c],
+            &[&lk, &boot, &kern],
             &[None, None, None],
             &[1.0, 1.0, 1.0],
             &PhyloParams::default(),
         );
-        assert!(r.newick.contains('('));
-        assert_eq!(r.labels.len(), 3);
+        let pair_bk = r
+            .pairs
+            .iter()
+            .find(|p| {
+                (p.a == "boot" && p.b == "kern") || (p.a == "kern" && p.b == "boot")
+            })
+            .unwrap();
+        let pair_lk = r
+            .pairs
+            .iter()
+            .find(|p| (p.a == "lk" && p.b == "kern") || (p.a == "kern" && p.b == "lk"))
+            .unwrap();
+        assert!(
+            pair_bk.d_tree < pair_lk.d_tree,
+            "boot↔kern d_tree={} should be < lk↔kern d_tree={} (J_bk={} J_lk={})",
+            pair_bk.d_tree,
+            pair_lk.d_tree,
+            pair_bk.geno_jaccard,
+            pair_lk.geno_jaccard
+        );
+        assert!(
+            pair_bk.geno_jaccard > pair_lk.geno_jaccard,
+            "boot↔kern should share more geno (bands) than lk↔kern"
+        );
+    }
+
+    #[test]
+    fn address_band_unisoc() {
+        assert_eq!(address_band(0xa907_3000), "band:unisoc_a9_af");
+        assert_eq!(address_band(0x1000), "band:vector_or_low");
     }
 }

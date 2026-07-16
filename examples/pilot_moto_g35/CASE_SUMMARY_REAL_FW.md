@@ -38,6 +38,18 @@ Artefactos: `out_real/platform_vendor_boot/PLATFORM_INVENTORY.md` · `platform_d
 - 35 wrap / 10 rewrite / 184 fossils
 - + `PLATFORM_INVENTORY.md` quando `--dtb dtbo.img` (overlay incompleto — preferir vendor_boot)
 
+
+
+## Filogenia validada (lk / boot / kernel)
+
+- Newick: `(analyze_lk:0.253652,(analyze_boot:0.117143,analyze_kernel:0.096798)n3:0.253652);`
+- `analyze_boot`↔`analyze_kernel`: d_tree=0.214 d_φ=0.188 J_anc=0.750 Φ=0.853 shared_anc=3
+- `analyze_lk`↔`analyze_kernel`: d_tree=0.604 d_φ=0.481 J_anc=0.150 Φ=0.853 shared_anc=1
+- `analyze_lk`↔`analyze_boot`: d_tree=0.624 d_φ=0.557 J_anc=0.150 Φ=0.794 shared_anc=1
+- Achado: páginas exactas J=0; bandas SoC ligam **boot↔kernel** (menor d_tree); LK = estrato lowmap (especiação/plasticidade).
+- NJ usa Ψ híbrido; d_φ anota relógio molecular suave.
+
+
 ## Reproduzir
 
 ```bash

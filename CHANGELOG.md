@@ -9,6 +9,7 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 - `--preferred-manufacturer` em `base synth` / `base design` (path feliz → `STM32F103C8`)
 - U2: feature `hil_usb` (rusb) — enumerate VID:PID → `Detected`; CI default sem USB
 - U3: feature `hil_programmer` — flash EXPERIMENTAL via CMD externo (`ALLOW_FLASH`); ≠ production
+- U4: playbook + SOW checklist v0.5 + COMMERCIAL (STM32 + HIL limits, sem overclaim)
 
 ### Changed
 - Mapper: com preferência de fabricante, ranking prioriza mfg sobre score/preço

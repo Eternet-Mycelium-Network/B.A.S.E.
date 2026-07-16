@@ -2,12 +2,12 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v0.4.0:** oferta **forense** com Capstone UART + SPI opt-in (`run_t1_b2.sh`),
-> Z3 opcional (`formal.yml` + `proof_report.backend`), PCB pin-aware UART/SPI rotulado,
-> HIL EXPERIMENTAL (`try_flash` / mock_dry_run ≠ silício).
-> Port industrial = **consultoria + [SOW](base-vault/13%20-%20Path%20to%20v0.3/13.21%20-%20SOW%20Industrial%20Template.md)**.
-> Playbook: [Forensic Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) · plano [v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.00%20-%20Index.md) · [CHANGELOG](CHANGELOG.md).
-> Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” / “HIL flasheou” continuam arquivados.
+> **Nota v0.5 (Path):** oferta **forense** com Capstone UART/SPI (RP) + wedge **STM32 USART1** opt-in,
+> Z3 opcional (`formal.yml` + `proof_report.backend`), PCB draft pin-aware (RP),
+> HIL EXPERIMENTAL (`hil_usb` / `hil_programmer` — ≠ production flash).
+> Port industrial = **consultoria + [SOW v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.21%20-%20SOW%20Industrial%20Checklist.md)**.
+> Playbook: [Forensic Playbook v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.20%20-%20Forensic%20Playbook.md) · [CHANGELOG](CHANGELOG.md).
+> Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” / “HIL production” continuam arquivados.
 
 > Licença: AGPLv3 — uso comercial permitido; modificações em serviço de rede devem ser compartilhadas.
 > Uso proprietário fechado: licença comercial (consultar).
@@ -22,7 +22,7 @@
 | Empresa ≤ 10 funcionários | AGPLv3 | Gratuito |
 | Empresa > 10 funcionários (uso interno) | AGPLv3 | Gratuito (modificações públicas se serviço de rede) |
 | **Produto proprietário** | **Comercial** | **Consultar** |
-| **Serviço gerenciado (SaaS)** | **Comercial** | **Consultar** — **não** disponível como turnkey em v0.3 |
+| **Serviço gerenciado (SaaS)** | **Comercial** | **Consultar** — **não** disponível como turnkey |
 
 ---
 
@@ -33,20 +33,23 @@ Analisar firmware embedded sem código-fonte: IoT, roteadores, sensores.
 
 ### O que B.A.S.E. entrega hoje
 ```bash
-./examples/pilot/run.sh   # ou run_v03.sh (alias documentado)
+./examples/pilot/run.sh            # gate UART RP
+./examples/pilot/run_t1_b2.sh      # UART + SPI opt-in
+./examples/pilot_stm32/run.sh      # segundo SoC (v0.5)
 base analyze firmware.bin --disasm --dot -o analysis/
-base design analysis/hardware_spec.yaml -o analysis/design/
+base design analysis/hardware_spec.yaml \
+  --preferred-manufacturer STMicroelectronics -o analysis/design/
 base replay trace.csv --contracts contracts.yaml
-# → Evidence DB, HardwareSpec, Reference Design, violações de contrato
 ```
 
-Demo guiada: [Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) ·
+Demo: [Playbook v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.20%20-%20Forensic%20Playbook.md) ·
 [Case study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md).
 
 ### Não inclui (ainda)
 - Prova criminal “pronta para tribunal” sem revisão humana
-- Z3 formal em todas as builds (simbólico default; Z3 via `solver_z3` + [formal.yml](.github/workflows/formal.yml))
-- Flash HIL automático sem probe detectado
+- Z3 formal em todas as builds
+- Flash HIL automático / “production”
+- Substituição do gate RP pelo STM32
 
 ### Precificação orientativa
 | Serviço | Preço |
@@ -62,14 +65,14 @@ Demo guiada: [Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensi
 ASICs / MCUs legados sem reposição.
 
 ### Posicionamento honesto
-B.A.S.E. **acelera** diagnóstico e Reference Design. Port completo (PCB fabricável + FW em silício + certificação) é **projeto de engenharia** com humanos no loop — não um botão `pipeline`.
+B.A.S.E. **acelera** diagnóstico e Reference Design (RP e/ou STM32). Port completo é **projeto de engenharia** com humanos no loop.
 
-Use o [SOW Industrial Template](base-vault/13%20-%20Path%20to%20v0.3/13.21%20-%20SOW%20Industrial%20Template.md): escopo / não-escopo / aceite.
+Use o [SOW Industrial Checklist v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.21%20-%20SOW%20Industrial%20Checklist.md).
 
 ```bash
-base analyze firmware.bin --disasm -o study/
-base design study/hardware_spec.yaml -o study/design/
-# → insumos para engenheiro; PCB gerado = engineering draft (pins anotados no wedge RP2040)
+base analyze firmware.bin --mmio-traces mmio.json --classify uart -o study/
+base design study/hardware_spec.yaml --preferred-manufacturer STMicroelectronics -o study/design/
+# → insumos para engenheiro; PCB gerado = engineering draft NOT FABRICABLE
 ```
 
 ### Precificação orientativa
@@ -77,6 +80,7 @@ base design study/hardware_spec.yaml -o study/design/
 |---------|-------|
 | Análise + relatório de viabilidade | R$ 5.000 |
 | Port completo (time humano + tool) | R$ 30.000 — 150.000 |
+| Lab HIL EXPERIMENTAL (add-on) | sob SOW §7 |
 | Suporte anual BOM | R$ 10.000/ano |
 
 ---
@@ -84,7 +88,7 @@ base design study/hardware_spec.yaml -o study/design/
 ## Mercado 3 — Educação / Pesquisa
 
 ### Solução
-Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](examples/pilot/).
+Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](examples/pilot/) e [pilot_stm32](examples/pilot_stm32/).
 
 | Serviço | Preço |
 |---------|-------|
@@ -93,10 +97,10 @@ Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](e
 
 ---
 
-## Mercado 4 — SaaS (**ainda adiado em v0.3**)
+## Mercado 4 — SaaS (**adiado**)
 
-Piloto + playbook existem; SaaS permanece adiado até retenção / ops.
-Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” no plano Starter.
+Playbook existe; SaaS permanece adiado.
+Não vender “PCB + firmware prontos” nem HIL “plug-and-flash”.
 
 ---
 
@@ -105,7 +109,7 @@ Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” no plano S
 | Canal | Foco |
 |-------|------|
 | GitHub / vault Obsidian | Transparência técnica |
-| Eventos de segurança | Demo forense com piloto |
+| Eventos de segurança | Demo forense (RP + STM32) |
 | Parcerias acadêmicas | Ψ + paleocomputação |
 | Cases G5 / Xbox / Alpha | Pesquisa — **não** claim de produto |
 
@@ -113,8 +117,7 @@ Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” no plano S
 
 ## Próximo passo imediato
 
-1. ✅ Path to Real R0–R6 + case study v0.2
-2. ✅ Path to v0.3 S0–S5 · tag `v0.3.0-rc`
-3. ✅ Path to v0.4 T0–T5 · tag `v0.4.0-rc`
-4. Demo forense: `./examples/pilot/run.sh` + opt-in `./examples/pilot/run_t1_b2.sh`
-5. Pricing SaaS / port turnkey só com aceite industrial explícito (SOW)
+1. ✅ Path to Real → v0.3 → v0.4 (`v0.4.0`)
+2. ✅ Path to v0.5 U0–U3 (STM32 + HIL enum/programmer)
+3. Demo: `run.sh` + `run_t1_b2.sh` + `pilot_stm32/run.sh`
+4. Pricing SaaS / port turnkey só com aceite industrial explícito (SOW)

@@ -21,6 +21,13 @@ base-evolve = { path = "../base-evolve" }
 specter-probe = { path = "../specterprobe" }
 base-bir = { path = "../base-bir" }
 base-bsl = { path = "../base-bsl" }
+base-hil = { path = "../base-hil" }
+
+[features]
+default = []
+# Opt-in: forward HIL USB / programmer features (CI default stays off).
+hil_usb = ["base-hil/hil_usb"]
+hil_programmer = ["base-hil/hil_programmer"]
 
 [[bin]]
 name = "base"

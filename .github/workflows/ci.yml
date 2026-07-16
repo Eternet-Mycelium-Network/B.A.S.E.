@@ -32,6 +32,16 @@ jobs:
           cargo build -p base-hil
           # default: sem hil_usb / sem libusb
           cargo test -p base-hil --features hil_programmer
+          # CLI thin wrapper (V3) — default build, no USB
+          cargo build -p base-cli
+          ./target/debug/base hil enumerate -o /tmp/base_hil_enum
+          test -f /tmp/base_hil_enum/hil_enumerate.json
+          grep -q Simulated /tmp/base_hil_enum/hil_enumerate.json
+          printf '\x00' > /tmp/base_hil_empty.bin
+          ./target/debug/base hil flash /tmp/base_hil_empty.bin --mock-flash -o /tmp/base_hil_flash
+          test -f /tmp/base_hil_flash/hil_flash_receipt.json
+          grep -q mock_dry_run /tmp/base_hil_flash/hil_flash_receipt.json
+          grep -vq '"production": true' /tmp/base_hil_flash/hil_flash_receipt.json
           # programador EXPERIMENTAL (comando externo); ≠ production flash
           # flash silício real continua gated por ALLOW_FLASH + CMD do operador
 

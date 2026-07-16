@@ -28,7 +28,7 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
-use crate::cli::Command;
+use crate::cli::{Command, HilCommand};
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
     match cmd {
@@ -130,6 +130,9 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         }
         Command::Bir { input, compile, validate, to_legacy, dot } => {
             handle_bir(input, *compile, *validate, *to_legacy, *dot, output)?;
+        }
+        Command::Hil { action } => {
+            handle_hil(action, output)?;
         }
     }
     Ok(())
@@ -1116,6 +1119,100 @@ fn handle_reconstruct(input: &Path, threshold: f64, max_iterations: usize, conti
             report.final_pass_rate * 100.0, threshold * 100.0);
     }
 
+    Ok(())
+}
+
+// ─── HIL (EXPERIMENTAL) ─────────────────────────────────
+
+fn parse_usb_id(s: &str) -> Result<u16> {
+    let t = s.trim().trim_start_matches("0x").trim_start_matches("0X");
+    u16::from_str_radix(t, 16).map_err(|e| anyhow::anyhow!("invalid USB id '{s}': {e}"))
+}
+
+fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
+    tracing::warn!("[HIL][EXPERIMENTAL] base hil — not production; not in pipeline default");
+    match action {
+        HilCommand::Enumerate { vid, pid } => {
+            let vid_n = parse_usb_id(vid)?;
+            let pid_n = parse_usb_id(pid)?;
+            let presence = base_hil::HilAgent::enumerate_presence(vid_n, pid_n);
+            tracing::info!(
+                "[HIL][EXPERIMENTAL] enumerate {:04x}:{:04x} → {:?}",
+                vid_n,
+                pid_n,
+                presence
+            );
+            fs::create_dir_all(output)?;
+            let report = serde_json::json!({
+                "experimental": true,
+                "production": false,
+                "vid": format!("0x{vid_n:04x}"),
+                "pid": format!("0x{pid_n:04x}"),
+                "presence": format!("{presence:?}"),
+                "hil_usb_feature": cfg!(feature = "hil_usb"),
+                "hil_programmer_feature": cfg!(feature = "hil_programmer"),
+                "programmer_feature_lib": base_hil::programmer_feature_enabled(),
+            });
+            let path = output.join("hil_enumerate.json");
+            fs::write(&path, serde_json::to_string_pretty(&report)?)?;
+            tracing::info!("Enumerate report → {}", path.display());
+        }
+        HilCommand::Flash {
+            image,
+            vid,
+            pid,
+            mock_detected,
+            mock_flash,
+        } => {
+            let vid_n = parse_usb_id(vid)?;
+            let pid_n = parse_usb_id(pid)?;
+            let data = fs::read(image)?;
+            let agent = if *mock_detected || *mock_flash {
+                if *mock_flash {
+                    tracing::warn!(
+                        "[HIL][EXPERIMENTAL] --mock-flash → dry-run only (NO silicon)"
+                    );
+                    base_hil::HilAgent::with_mock_flash(base_hil::ProbePresence::Detected)
+                } else {
+                    tracing::warn!(
+                        "[HIL][EXPERIMENTAL] --mock-detected → Detected offline (no USB)"
+                    );
+                    base_hil::HilAgent::with_presence(base_hil::ProbePresence::Detected)
+                }
+            } else {
+                base_hil::HilAgent::connect(vid_n, pid_n)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+            };
+
+            match agent.try_flash(&data) {
+                Ok(receipt) => {
+                    assert_ne!(
+                        receipt.mode, "production",
+                        "CLI must never claim production flash"
+                    );
+                    tracing::info!(
+                        "[HIL][EXPERIMENTAL] flash receipt mode={} bytes={}",
+                        receipt.mode,
+                        receipt.bytes
+                    );
+                    fs::create_dir_all(output)?;
+                    let report = serde_json::json!({
+                        "experimental": true,
+                        "production": false,
+                        "mode": receipt.mode,
+                        "bytes": receipt.bytes,
+                        "image": image.display().to_string(),
+                    });
+                    let path = output.join("hil_flash_receipt.json");
+                    fs::write(&path, serde_json::to_string_pretty(&report)?)?;
+                    tracing::info!("Flash receipt → {}", path.display());
+                }
+                Err(e) => {
+                    anyhow::bail!("{e}");
+                }
+            }
+        }
+    }
     Ok(())
 }
 

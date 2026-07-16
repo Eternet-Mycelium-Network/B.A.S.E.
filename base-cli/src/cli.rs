@@ -276,4 +276,45 @@ pub enum Command {
         #[arg(long)]
         dot: bool,
     },
+
+    /// HIL probe host agent — **EXPERIMENTAL** (not in pipeline default)
+    Hil {
+        #[command(subcommand)]
+        action: HilCommand,
+    },
+}
+
+/// `base hil` subcommands — thin wrapper over `base-hil`.
+#[derive(Subcommand)]
+pub enum HilCommand {
+    /// Enumerate probe presence for VID:PID (default Simulated without hil_usb / mock env)
+    Enumerate {
+        /// USB vendor id (hex), default 0xCAFE
+        #[arg(long, default_value = "0xcafe")]
+        vid: String,
+
+        /// USB product id (hex), default 0x4007
+        #[arg(long, default_value = "0x4007")]
+        pid: String,
+    },
+
+    /// Attempt flash / dry-run — **never** production; gates match `base-hil`
+    Flash {
+        /// Firmware image to flash (or dry-run)
+        image: PathBuf,
+
+        #[arg(long, default_value = "0xcafe")]
+        vid: String,
+
+        #[arg(long, default_value = "0x4007")]
+        pid: String,
+
+        /// Force ProbePresence::Detected offline (like BASE_HIL_MOCK_DETECTED)
+        #[arg(long)]
+        mock_detected: bool,
+
+        /// Dry-run receipt (`mock_dry_run`) — no silicon
+        #[arg(long)]
+        mock_flash: bool,
+    },
 }

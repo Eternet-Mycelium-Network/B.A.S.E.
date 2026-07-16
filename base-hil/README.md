@@ -10,7 +10,16 @@ Template de probe HIL (host agent + gerador de firmware stub RP2350).
 | Path Detected offline | ✅ `with_presence(Detected)` / `BASE_HIL_MOCK_DETECTED` |
 | Dry-run flash (sem silício) | ✅ `with_mock_flash(Detected)` → `mock_dry_run` |
 | Programador USB/externo | ✅ feature `hil_programmer` — **EXPERIMENTAL**, ≠ production |
+| CLI `base hil` | ✅ V3 — `enumerate` / `flash` (wrapper; ≠ pipeline default) |
 | Ligado ao `base pipeline` default | ❌ não |
+
+## CLI (V3)
+
+```bash
+base hil enumerate -o out/                 # default → Simulated
+base hil flash fw.bin --mock-flash -o out/ # mock_dry_run
+# cargo build -p base-cli --features hil_programmer,hil_usb
+```
 
 ## Enumerate (U2)
 
@@ -60,4 +69,4 @@ let m = HilAgent::with_mock_flash(ProbePresence::Detected);
 assert_eq!(m.try_flash(&[1])?.mode, "mock_dry_run");
 ```
 
-← vault: [Sprint U3](../base-vault/15%20-%20Path%20to%20v0.5/15.13%20-%20Sprint%20U3%20Programmer.md)
+← vault: [Sprint V3 CLI HIL](../base-vault/16%20-%20Path%20to%20v0.6/16.13%20-%20Sprint%20V3%20CLI%20HIL.md)

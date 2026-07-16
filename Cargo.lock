@@ -190,6 +190,7 @@ dependencies = [
  "base-core",
  "base-evolve",
  "base-fw",
+ "base-hil",
  "base-pcb",
  "clap 4.6.1",
  "serde",

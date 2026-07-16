@@ -67,6 +67,13 @@ jobs:
           ./examples/pilot_stm32/run.sh
           test -f examples/pilot_stm32/out/CASE_SUMMARY.md
 
+      - name: Pilot W1 STM32 (USART+SPI2 opt-in)
+        timeout-minutes: 10
+        run: |
+          chmod +x examples/pilot_stm32/run_w1_spi.sh
+          ./examples/pilot_stm32/run_w1_spi.sh
+          test -f examples/pilot_stm32/out_w1_spi/CASE_SUMMARY_W1.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

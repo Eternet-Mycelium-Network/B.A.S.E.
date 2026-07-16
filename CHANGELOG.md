@@ -2,6 +2,12 @@
 
 Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`.
 
+## [Unreleased] — Path to v0.7
+
+### Added
+- W1: dual STM32 USART1 + SPI2 @ `0x40003800` — `run_w1_spi.sh`, fixtures, teste `pilot_stm32_spi`
+  - SPI1 @ `0x40013000` omitido (colisão página 4K com USART1)
+
 ## [v0.6.0] — 2026-07-16
 
 Promoção de `v0.6.0-rc` após smoke local verde (`run.sh`, `pilot_stm32/run.sh`, `base-hil` / `base hil`).

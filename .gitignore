@@ -22,6 +22,7 @@ PaleoComputação.pdf
 examples/pilot/out/
 examples/pilot/out_t1_b2/
 examples/pilot_stm32/out/
+examples/pilot_stm32/out_w1_spi/
 
 # Build / IDE
 **/*.elf

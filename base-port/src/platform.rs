@@ -743,6 +743,7 @@ impl PlatformInventory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use specter_probe::acquisition::{DtbInfo, GpioMap, IrqMap, MmioRegion};
 
     #[test]
     fn extract_fdt_finds_magic() {
@@ -752,5 +753,125 @@ mod tests {
         let blobs = extract_fdt_blobs(&buf);
         assert_eq!(blobs.len(), 1);
         assert_eq!(blobs[0].len(), 20);
+    }
+
+    fn rich_dtb_info() -> DtbInfo {
+        DtbInfo {
+            compatible: vec!["sprd,ums9620".into(), "arm,armv8".into()],
+            model: Some("test-board".into()),
+            mmio_regions: vec![
+                MmioRegion {
+                    address: 0x8000_0000,
+                    size: 0x10000,
+                    peripheral: Some("/interrupt-controller@80000000".into()),
+                    compatible: vec!["arm,gic-v3".into()],
+                },
+                MmioRegion {
+                    address: 0,
+                    size: 0,
+                    peripheral: Some("/timer".into()),
+                    compatible: vec!["arm,armv8-timer".into()],
+                },
+                MmioRegion {
+                    address: 0x9000_0000,
+                    size: 0x1000,
+                    peripheral: Some("/serial@90000000".into()),
+                    compatible: vec!["sprd,ums9620-uart".into()],
+                },
+                MmioRegion {
+                    address: 0x9100_0000,
+                    size: 0x1000,
+                    peripheral: Some("/memory-controller@91000000".into()),
+                    compatible: vec!["sprd,pub-dmc".into()],
+                },
+                MmioRegion {
+                    address: 0x9200_0000,
+                    size: 0x1000,
+                    peripheral: Some("/ufshc@92000000".into()),
+                    compatible: vec!["sprd,ufshc-ums9620".into()],
+                },
+                MmioRegion {
+                    address: 0x9300_0000,
+                    size: 0x1000,
+                    peripheral: Some("/gpu@93000000".into()),
+                    compatible: vec!["sprd,mali-natt".into()],
+                },
+                MmioRegion {
+                    address: 0x9400_0000,
+                    size: 0x1000,
+                    peripheral: Some("/iommu@94000000".into()),
+                    compatible: vec!["unisoc,iommuvaul6p-isp".into()],
+                },
+                MmioRegion {
+                    address: 0x1,
+                    size: 0,
+                    peripheral: Some("/cpus/cpu@0".into()),
+                    compatible: vec!["arm,cortex-a76".into(), "arm,armv8".into()],
+                },
+                MmioRegion {
+                    address: 0x2,
+                    size: 0,
+                    peripheral: Some("/cpus/cpu@1".into()),
+                    compatible: vec!["arm,cortex-a55".into(), "arm,armv8".into()],
+                },
+                MmioRegion {
+                    address: 0x100,
+                    size: 0x100,
+                    peripheral: Some("/pmic@100".into()),
+                    compatible: vec!["sprd,sc27xx-pd".into()],
+                },
+            ],
+            irqs: vec![IrqMap {
+                irq: 27,
+                peripheral: "arch_timer".into(),
+                flags: 0,
+            }],
+            clocks: vec![],
+            gpios: vec![GpioMap {
+                bank: 0,
+                base: 0x170000,
+                count: 32,
+            }],
+            i2c_buses: vec![],
+            spi_buses: vec![],
+            dma_controllers: vec![],
+        }
+    }
+
+    #[test]
+    fn rich_dtb_scores_high_readiness() {
+        let inv = build_platform_from_dtb_info(&rich_dtb_info(), None, true);
+        assert!(!inv.generates_os);
+        assert!(
+            inv.os_port_readiness.score >= 0.8,
+            "score={}",
+            inv.os_port_readiness.score
+        );
+        assert!(inv.cpu.isa_hint.contains("A76") || inv.cpu.isa_hint.contains("A55"));
+        let gic = inv.components.iter().find(|c| c.class == "gic").unwrap();
+        assert_eq!(gic.status, DiscoveryStatus::Found);
+        let uart = inv.components.iter().find(|c| c.class == "uart").unwrap();
+        assert_eq!(uart.status, DiscoveryStatus::Found);
+        let md = inv.to_markdown();
+        assert!(md.contains("PLATFORM_INVENTORY"));
+        assert!(md.contains("gic"));
+    }
+
+    #[test]
+    fn flash_cfg_hints_storage_when_missing() {
+        let mut info = rich_dtb_info();
+        info.mmio_regions
+            .retain(|r| !r.compatible.iter().any(|c| c.contains("ufshc")));
+        let inv = build_platform_from_dtb_info(&info, Some("FlashType = UFS"), true);
+        let st = inv
+            .components
+            .iter()
+            .find(|c| c.class == "storage_emmc_ufs")
+            .unwrap();
+        assert!(
+            st.status == DiscoveryStatus::Partial || st.status == DiscoveryStatus::Found,
+            "{:?}",
+            st.status
+        );
     }
 }

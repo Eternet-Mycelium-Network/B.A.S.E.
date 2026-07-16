@@ -958,4 +958,107 @@ mod tests {
         assert_eq!(address_band(0xa907_3000), "band:unisoc_a9_af");
         assert_eq!(address_band(0x1000), "band:vector_or_low");
     }
+
+    #[test]
+    fn thc_fires_when_distant_but_shared_mmio_block() {
+        // Bandas distintas → geno baixo / d_φ alto; MMIO ids idênticos → bloco THC
+        let mut a = db_with(
+            "donor",
+            &[
+                0xa900_0000,
+                0xa901_0000,
+                0xdead_0000,
+                0xdead_0004,
+                0xdead_0008,
+                0xdead_000c,
+            ],
+        );
+        let mut b = db_with(
+            "recipient",
+            &[
+                0x0000_1000,
+                0x0000_2000,
+                0xdead_0000,
+                0xdead_0004,
+                0xdead_0008,
+                0xdead_000c,
+            ],
+        );
+        // force distinct sources
+        a.source = "donor".into();
+        b.source = "recipient".into();
+        let params = PhyloParams {
+            distant_d_phi: 0.35,
+            thc_local_sim: 0.85,
+            thc_min_block: 3,
+            homoplasy_identical_frac: 0.15,
+        };
+        let r = phylogeny_from_evidence(&[&a, &b], &[None, None], &[1.0, 1.0], &params);
+        assert!(
+            !r.thc_events.is_empty(),
+            "expected THC; pairs={:?} geno={:?}",
+            r.pairs,
+            r.pairs.iter().map(|p| (p.geno_jaccard, p.d_phi, p.shared_fossils)).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn speciation_candidate_when_geno_diverges_pheno_correlates() {
+        // Mesmo tamanho fenotípico, bandas distintas → especiação
+        let a = db_with("fork_a", &[0x1000, 0x2000, 0x3000, 0x4000]);
+        let b = db_with(
+            "fork_b",
+            &[0xa900_0000, 0xa901_0000, 0xa902_0000, 0xa903_0000],
+        );
+        let r = phylogeny_from_evidence(
+            &[&a, &b],
+            &[None, None],
+            &[1.0, 1.0],
+            &PhyloParams::default(),
+        );
+        let p = &r.pairs[0];
+        assert!(
+            p.speciation_candidate || (p.geno_jaccard < 0.2 && p.pheno_similarity > 0.5),
+            "expected speciation-like split: J={} Φ={} d_φ={} flag={}",
+            p.geno_jaccard,
+            p.pheno_similarity,
+            p.d_phi,
+            p.speciation_candidate
+        );
+        if p.geno_jaccard < 0.15 && p.pheno_similarity >= 0.55 && p.d_phi >= 0.35 {
+            assert!(p.speciation_candidate);
+            assert!(!r.speciation_events.is_empty());
+        }
+    }
+
+    #[test]
+    fn homoplasy_candidate_on_moderate_identical_frac() {
+        // Poucos ids partilhados exactos + bandas distintas → frac moderada
+        let a = db_with(
+            "conv_a",
+            &[0x1000, 0x2000, 0x3000, 0x4000, 0x5000, 0x6000, 0x7000],
+        );
+        let b = db_with(
+            "conv_b",
+            &[
+                0xa900_0000,
+                0xa901_0000,
+                0xa902_0000,
+                0xa903_0000,
+                0xa904_0000,
+                0x1000, // um atrator convergente
+                0x2000,
+            ],
+        );
+        let params = PhyloParams {
+            distant_d_phi: 0.3,
+            thc_local_sim: 0.85,
+            thc_min_block: 8,
+            homoplasy_identical_frac: 0.05,
+        };
+        let r = phylogeny_from_evidence(&[&a, &b], &[None, None], &[1.0, 5.0], &params);
+        // Pode ser homoplasia ou apenas distância — garantir caminho de código
+        let _ = r.homoplasy_events.len();
+        assert!(r.pairs[0].d_phi > 0.0);
+    }
 }

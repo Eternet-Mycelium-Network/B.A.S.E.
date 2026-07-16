@@ -6,6 +6,8 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ### Added
 - Filogenia: bandas SoC + Ψ híbrido (geno/pheno); NJ usa d_tree; validado G35 (boot↔kernel < lk)
+- Testes sintéticos THC / especiação / excavate+ref / platform DTB readiness
+- CLI `long_about` menciona `paleo` + `port`
 - **Filogenia Computacional** (`base-core/src/phylo.rs`) — G(B)/λ, d_φ=Ψ·exp(−λ̄Δt), Neighbor-Joining, THC/homoplasia, Newick + cladograma
 - CLI `base paleo phylo` (≥2 EvidenceDb → `PHYLO_ATLAS.md`, `tree.nwk`)
 - **StratAlign** (`base-core/src/strat_align.rs`) — DP §7.1 PaleoComputação: alinhamento de sequências fósseis com gap ∝ meia-vida

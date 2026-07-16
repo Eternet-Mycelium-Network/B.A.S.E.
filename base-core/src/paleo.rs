@@ -242,4 +242,39 @@ mod tests {
         assert!(r.strat_align.is_none());
         assert!(!r.atlas_summary.is_empty());
     }
+
+    #[test]
+    fn excavate_with_reference_runs_strat_align() {
+        let mut obs = EvidenceDb::new("obs");
+        obs.add(EvidenceEntry {
+            id: "e0".into(),
+            evidence_type: EvidenceType::MmioWrite {
+                address: 0x4000,
+                value: Some(1),
+            },
+            context: Default::default(),
+        });
+        obs.add(EvidenceEntry {
+            id: "e1".into(),
+            evidence_type: EvidenceType::MmioWrite {
+                address: 0x4004,
+                value: Some(2),
+            },
+            context: Default::default(),
+        });
+        let mut refer = EvidenceDb::new("ref");
+        refer.add(EvidenceEntry {
+            id: "r0".into(),
+            evidence_type: EvidenceType::MmioWrite {
+                address: 0x4000,
+                value: Some(1),
+            },
+            context: Default::default(),
+        });
+        let r = excavate(&obs, &tiny_spec(), Some(&refer), 50, 1000, 20);
+        assert!(r.strat_align.is_some());
+        let sa = r.strat_align.unwrap();
+        assert!(sa.match_count >= 1);
+        assert!(r.atlas_summary.iter().any(|l| l.contains("StratAlign")));
+    }
 }

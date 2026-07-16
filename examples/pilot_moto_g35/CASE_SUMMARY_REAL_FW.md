@@ -29,16 +29,7 @@ Achados em `vendor_boot` (primário para OS port):
 
 Artefactos: `out_real/platform_vendor_boot/PLATFORM_INVENTORY.md` · `platform_dtbo/`
 
-## Primary atlas (usar primeiro)
-
-`examples/pilot_moto_g35/out_real/port_package_lk/`
-
-- Capstone MMIO real no **lk-sign.bin** (Little Kernel)
-- Ψ **ConclusiveMatch** (~86%)
-- 35 wrap / 10 rewrite / 184 fossils
-- + `PLATFORM_INVENTORY.md` quando `--dtb dtbo.img` (overlay incompleto — preferir vendor_boot)
-
-
+Nota: só `port_package_lk` recebe `--dtb` no `run_real_fw.sh`; boot/kernel usam os passos `port platform` separados (preferir **vendor_boot**).
 
 ## Filogenia validada (lk / boot / kernel)
 
@@ -48,20 +39,32 @@ Artefactos: `out_real/platform_vendor_boot/PLATFORM_INVENTORY.md` · `platform_d
 - `analyze_lk`↔`analyze_boot`: d_tree=0.624 d_φ=0.557 J_anc=0.150 Φ=0.794 shared_anc=1
 - Achado: páginas exactas J=0; bandas SoC ligam **boot↔kernel** (menor d_tree); LK = estrato lowmap (especiação/plasticidade).
 - NJ usa Ψ híbrido; d_φ anota relógio molecular suave.
+- Artefactos: `out_real/phylo/` (gitignored)
 
+## Primary atlas (usar primeiro)
+
+`examples/pilot_moto_g35/out_real/port_package_lk/`
+
+- Capstone MMIO real no **lk-sign.bin** (Little Kernel)
+- Ψ **ConclusiveMatch** (~86%)
+- 35 wrap / 10 rewrite / 184 fossils
+- + `PLATFORM_INVENTORY.md` quando `--dtb` (DTBO overlay incompleto — preferir vendor_boot)
 
 ## Reproduzir
 
 ```bash
 ./examples/pilot_moto_g35/run_real_fw.sh
-# ou só inventário:
+# ou só inventário / filogenia:
 base port platform examples/pilot_moto_g35/real_fw/vendor_boot.img \
   --flash-cfg examples/pilot_moto_g35/real_fw/flash.cfg \
   -o examples/pilot_moto_g35/out_real/platform_vendor_boot
+base paleo phylo out_real/analyze_{lk,boot,kernel}/evidence_db.yaml \
+  --delta-t 1 --delta-t 2 --delta-t 3 -o out_real/phylo/
 ```
 
 ## Honesty
 
-- Checklist 100% no DTB ≠ OS bootável / TaurOS turnkey (drivers, clocks, pinctrl, secure world…)
+- Checklist 100% no DTB ≠ OS bootável / TaurOS turnkey
+- Filogenia ≠ prova de plágio
 - `generates_os: false` · `Firmware.zip` / `real_fw/` gitignored
 - status: **OK**

@@ -12,5 +12,6 @@ pub use fossils::{FossilInventory, FossilKind, FossilRecord};
 pub use map::{AddressDriverMap, MappedRegion, TranslationStrategy};
 pub use package::{build_port_package, PortPackage, PortPackageOptions};
 pub use platform::{
-    build_platform_from_dtb_bytes, build_platform_from_path, extract_fdt_blobs, PlatformInventory,
+    build_platform_from_dtb_bytes, build_platform_from_dtb_info, build_platform_from_path,
+    extract_fdt_blobs, DiscoveryStatus, PlatformInventory,
 };

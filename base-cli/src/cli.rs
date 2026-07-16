@@ -4,7 +4,9 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "base", version, about = "B.A.S.E. — Behavioral ASIC Synthesis Engine")]
 #[command(long_about = "Transform hardware behavior into new PCB + firmware.
-  Pipeline: analyze → synth → pcb → fw → check → evolve")]
+  Pipeline: analyze → synth → pcb → fw → check → evolve
+  Assist: paleo (StratAlign / excavate / phylo) · port (package / platform DTB)
+  Honesty: generates_os=false · auto_fix_complete=false by default")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

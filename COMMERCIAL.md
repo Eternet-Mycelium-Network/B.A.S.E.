@@ -2,11 +2,11 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v0.4 (`v0.4.0-rc`):** oferta **forense** com Capstone UART + SPI opt-in (`run_t1_b2.sh`),
+> **Nota v0.4.0:** oferta **forense** com Capstone UART + SPI opt-in (`run_t1_b2.sh`),
 > Z3 opcional (`formal.yml` + `proof_report.backend`), PCB pin-aware UART/SPI rotulado,
 > HIL EXPERIMENTAL (`try_flash` / mock_dry_run ≠ silício).
 > Port industrial = **consultoria + [SOW](base-vault/13%20-%20Path%20to%20v0.3/13.21%20-%20SOW%20Industrial%20Template.md)**.
-> Playbook: [Forensic Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) · plano [v0.4](base-vault/14%20-%20Path%20to%20v0.4/14.00%20-%20Index.md).
+> Playbook: [Forensic Playbook](base-vault/13%20-%20Path%20to%20v0.3/13.20%20-%20Forensic%20Playbook.md) · plano [v0.5](base-vault/15%20-%20Path%20to%20v0.5/15.00%20-%20Index.md) · [CHANGELOG](CHANGELOG.md).
 > Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” / “HIL flasheou” continuam arquivados.
 
 > Licença: AGPLv3 — uso comercial permitido; modificações em serviço de rede devem ser compartilhadas.

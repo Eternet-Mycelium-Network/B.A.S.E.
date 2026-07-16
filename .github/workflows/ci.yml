@@ -47,6 +47,13 @@ jobs:
           ./examples/pilot/run_t1_b2.sh
           test -f examples/pilot/out_t1_b2/CASE_SUMMARY_T1.md
 
+      - name: Pilot U1 STM32 (USART opt-in)
+        timeout-minutes: 10
+        run: |
+          chmod +x examples/pilot_stm32/run.sh
+          ./examples/pilot_stm32/run.sh
+          test -f examples/pilot_stm32/out/CASE_SUMMARY.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

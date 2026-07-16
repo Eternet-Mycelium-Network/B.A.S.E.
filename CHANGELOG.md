@@ -2,6 +2,15 @@
 
 Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`.
 
+## [Unreleased] — Path to v0.5
+
+### Added
+- U1: wedge STM32F103 USART1 @ `0x40013800` — `examples/pilot_stm32/`, smoke opt-in
+- `--preferred-manufacturer` em `base synth` / `base design` (path feliz → `STM32F103C8`)
+
+### Changed
+- Mapper: com preferência de fabricante, ranking prioriza mfg sobre score/preço
+
 ## [v0.4.0] — 2026-07-16
 
 Promoção de `v0.4.0-rc` após smoke local verde (`run.sh`, `run_t1_b2.sh`, testes piloto/SMT/HIL).

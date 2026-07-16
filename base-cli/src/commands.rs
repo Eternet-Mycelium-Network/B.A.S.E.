@@ -35,8 +35,19 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         Command::Analyze { firmware, mmio_traces, classify, dot, disasm } => {
             handle_analyze(firmware, mmio_traces.as_deref(), classify.as_deref(), *dot, *disasm, output)?;
         }
-        Command::Synth { input, component_db, max_bom_cost } => {
-            handle_synth(input, component_db, *max_bom_cost, output)?;
+        Command::Synth {
+            input,
+            component_db,
+            max_bom_cost,
+            preferred_manufacturer,
+        } => {
+            handle_synth(
+                input,
+                component_db,
+                *max_bom_cost,
+                preferred_manufacturer.as_deref(),
+                output,
+            )?;
         }
         Command::Pcb { input, project, drc } => {
             handle_pcb(input, project, *drc, output)?;
@@ -100,8 +111,19 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         Command::Prove { contracts, smt_output, deadlock } => {
             handle_prove(contracts.as_path(), smt_output.clone(), *deadlock, output)?;
         }
-        Command::Design { input, pcb } => {
-            handle_design(input.as_path(), *pcb, output)?;
+        Command::Design {
+            input,
+            pcb,
+            max_bom_cost,
+            preferred_manufacturer,
+        } => {
+            handle_design(
+                input.as_path(),
+                *pcb,
+                *max_bom_cost,
+                preferred_manufacturer.as_deref(),
+                output,
+            )?;
         }
         Command::EventGraph { contracts, trace, format } => {
             handle_event_graph(contracts.as_path(), trace.as_path(), &format, output)?;
@@ -358,7 +380,13 @@ fn mock_mmio_from_binary(data: &[u8]) -> Vec<MmioAccess> {
 
 // ─── Synth ──────────────────────────────────────────────
 
-fn handle_synth(input: &Path, component_db: &Path, max_bom_cost: Option<f64>, output: &Path) -> Result<()> {
+fn handle_synth(
+    input: &Path,
+    component_db: &Path,
+    max_bom_cost: Option<f64>,
+    preferred_manufacturer: Option<&str>,
+    output: &Path,
+) -> Result<()> {
     tracing::info!("Loading HardwareSpec from {}", input.display());
     let yaml = fs::read_to_string(input)?;
     let spec = HardwareSpec::from_yaml(&yaml)?;
@@ -372,9 +400,13 @@ fn handle_synth(input: &Path, component_db: &Path, max_bom_cost: Option<f64>, ou
     if let Some(budget) = max_bom_cost {
         tracing::info!("BOM budget: ${:.2}", budget);
     }
+    if let Some(mfg) = preferred_manufacturer {
+        tracing::info!("Preferred manufacturer: {}", mfg);
+    }
 
     let mapper = ComponentMapper::new(db);
-    let mut synthesized = mapper.map_spec_with_budget(&spec, max_bom_cost);
+    let mut synthesized =
+        mapper.map_spec_with_prefs(&spec, max_bom_cost, preferred_manufacturer);
 
     let netlist_segments = base_core::mapping::netlist::generate_netlist(
         &synthesized,
@@ -714,6 +746,7 @@ fn handle_pipeline(
         &output.join("01_analyze/hardware_spec.yaml"),
         component_db_path,
         None,
+        None,
         &output.join("02_synth"),
     )?;
 
@@ -722,6 +755,8 @@ fn handle_pipeline(
     handle_design(
         &output.join("01_analyze/hardware_spec.yaml"),
         false,
+        None,
+        None,
         &output.join("03_design"),
     )?;
 
@@ -902,7 +937,13 @@ fn handle_prove(contracts_path: &Path, smt_output: Option<PathBuf>, deadlock: bo
     Ok(())
 }
 
-fn handle_design(input: &Path, pcb: bool, output: &Path) -> Result<()> {
+fn handle_design(
+    input: &Path,
+    pcb: bool,
+    max_bom_cost: Option<f64>,
+    preferred_manufacturer: Option<&str>,
+    output: &Path,
+) -> Result<()> {
     let yaml = fs::read_to_string(input)?;
     let spec = base_core::spec::types::HardwareSpec::from_yaml(&yaml)?;
 
@@ -913,7 +954,16 @@ fn handle_design(input: &Path, pcb: bool, output: &Path) -> Result<()> {
         tracing::info!("Loaded {} components for design", db.len());
     }
 
-    let design = base_core::design::ReferenceDesign::from_hardware_spec(&spec, &db);
+    if let Some(mfg) = preferred_manufacturer {
+        tracing::info!("Preferred manufacturer: {}", mfg);
+    }
+
+    let design = base_core::design::ReferenceDesign::from_hardware_spec_prefs(
+        &spec,
+        &db,
+        max_bom_cost,
+        preferred_manufacturer,
+    );
     fs::create_dir_all(output)?;
     fs::write(output.join("reference_design.yaml"), design.to_yaml()?)?;
     tracing::info!(
@@ -927,7 +977,8 @@ fn handle_design(input: &Path, pcb: bool, output: &Path) -> Result<()> {
     if pcb {
         tracing::info!("Generating engineering-draft PCB from design mapping...");
         let mapper = ComponentMapper::new(db);
-        let synthesized = mapper.map_spec(&spec);
+        let synthesized =
+            mapper.map_spec_with_prefs(&spec, max_bom_cost, preferred_manufacturer);
         let synth_path = output.join("synthesized_spec.yaml");
         fs::write(&synth_path, serde_yaml::to_string(&synthesized)?)?;
         handle_pcb(&synth_path, "reference", false, &output.join("pcb"))?;

@@ -130,8 +130,19 @@ impl ReferenceDesign {
 
     /// Gera reference design a partir do HardwareSpec + component DB (mapper + contratos).
     pub fn from_hardware_spec(spec: &HardwareSpec, db: &ComponentDb) -> Self {
+        Self::from_hardware_spec_prefs(spec, db, None, None)
+    }
+
+    /// Como [`from_hardware_spec`], com budget e fabricante preferido (U1 STM32).
+    pub fn from_hardware_spec_prefs(
+        spec: &HardwareSpec,
+        db: &ComponentDb,
+        max_bom_cost: Option<f64>,
+        preferred_manufacturer: Option<&str>,
+    ) -> Self {
         let mapper = ComponentMapper::new(db.clone());
-        let synthesized = mapper.map_spec(spec);
+        let synthesized =
+            mapper.map_spec_with_prefs(spec, max_bom_cost, preferred_manufacturer);
         Self::from_synthesized(spec, &synthesized, db)
     }
 

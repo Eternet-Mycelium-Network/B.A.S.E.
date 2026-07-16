@@ -55,6 +55,10 @@ pub enum Command {
         /// Max BOM cost (USD)
         #[arg(long)]
         max_bom_cost: Option<f64>,
+
+        /// Prefer manufacturer substring (e.g. STMicroelectronics)
+        #[arg(long)]
+        preferred_manufacturer: Option<String>,
     },
 
     /// Generate PCB (KiCad) from SynthesizedSpec
@@ -228,6 +232,14 @@ pub enum Command {
         /// Generate PCB (engineering draft)
         #[arg(long)]
         pcb: bool,
+
+        /// Max BOM cost (USD) — passed to mapper
+        #[arg(long)]
+        max_bom_cost: Option<f64>,
+
+        /// Prefer manufacturer substring (e.g. STMicroelectronics)
+        #[arg(long)]
+        preferred_manufacturer: Option<String>,
     },
 
     /// Export event graph (causal) from contracts + trace

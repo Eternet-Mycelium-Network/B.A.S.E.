@@ -25,11 +25,28 @@ impl ComponentMapper {
         spec: &HardwareSpec,
         max_bom_cost: Option<f64>,
     ) -> SynthesizedSpec {
+        self.map_spec_with_prefs(spec, max_bom_cost, None)
+    }
+
+    /// Budget + preferência de fabricante (substring case-insensitive; U1 STM32).
+    pub fn map_spec_with_prefs(
+        &self,
+        spec: &HardwareSpec,
+        max_bom_cost: Option<f64>,
+        preferred_manufacturer: Option<&str>,
+    ) -> SynthesizedSpec {
         let mut assignments = Vec::new();
         let mut running_cost = 0.0f64;
+        let pref = preferred_manufacturer.map(|s| s.to_ascii_lowercase());
 
         for block in &spec.blocks {
-            let best = self.find_best_component_budget(block, spec, max_bom_cost, running_cost);
+            let best = self.find_best_component_budget(
+                block,
+                spec,
+                max_bom_cost,
+                running_cost,
+                pref.as_deref(),
+            );
             if let Some(assignment) = best {
                 if let Some(entry) = self.db.by_name(&assignment.component) {
                     if let Some(price) = entry.availability.as_ref().and_then(|a| a.price_1k) {
@@ -46,7 +63,7 @@ impl ComponentMapper {
             netlist: None,
             constraints: SynthesisConstraints {
                 max_bom_cost,
-                preferred_manufacturer: None,
+                preferred_manufacturer: preferred_manufacturer.map(|s| s.to_string()),
                 preferred_package: None,
             },
         }
@@ -58,7 +75,7 @@ impl ComponentMapper {
         block: &FunctionalBlock,
         spec: &HardwareSpec,
     ) -> Option<ComponentAssignment> {
-        self.find_best_component_budget(block, spec, None, 0.0)
+        self.find_best_component_budget(block, spec, None, 0.0, None)
     }
 
     fn find_best_component_budget(
@@ -67,6 +84,7 @@ impl ComponentMapper {
         spec: &HardwareSpec,
         max_bom_cost: Option<f64>,
         running_cost: f64,
+        preferred_manufacturer: Option<&str>,
     ) -> Option<ComponentAssignment> {
         let constraints = extract_constraints(block, spec);
         let candidates = self.find_candidates(block);
@@ -87,29 +105,47 @@ impl ComponentMapper {
             .map(|c| check_constraints(c, &constraints))
             .filter(|a| a.match_score > 0.3)
             .max_by(|a, b| {
-                // 1) score  2) prefer MCU  3) cheaper
-                a.match_score
+                // Higher wins. With preferred mfg set: pref → score → MCU → price.
+                // Without: score → MCU → price (U1 STM32 needs pref above score).
+                let pref_rank = |mfg: &str| -> u8 {
+                    preferred_manufacturer
+                        .map(|p| {
+                            if mfg.to_ascii_lowercase().contains(p) {
+                                1
+                            } else {
+                                0
+                            }
+                        })
+                        .unwrap_or(0)
+                };
+                let by_pref = pref_rank(&a.component.manufacturer)
+                    .cmp(&pref_rank(&b.component.manufacturer));
+                let by_score = a
+                    .match_score
                     .partial_cmp(&b.match_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-                    .then_with(|| {
-                        category_preference(a.component.category)
-                            .cmp(&category_preference(b.component.category))
-                    })
-                    .then_with(|| {
-                        let pa = a
-                            .component
-                            .availability
-                            .as_ref()
-                            .and_then(|x| x.price_1k)
-                            .unwrap_or(f64::MAX);
-                        let pb = b
-                            .component
-                            .availability
-                            .as_ref()
-                            .and_then(|x| x.price_1k)
-                            .unwrap_or(f64::MAX);
-                        pb.partial_cmp(&pa).unwrap_or(std::cmp::Ordering::Equal)
-                    })
+                    .unwrap_or(std::cmp::Ordering::Equal);
+                let by_cat = category_preference(a.component.category)
+                    .cmp(&category_preference(b.component.category));
+                let by_price = {
+                    let pa = a
+                        .component
+                        .availability
+                        .as_ref()
+                        .and_then(|x| x.price_1k)
+                        .unwrap_or(f64::MAX);
+                    let pb = b
+                        .component
+                        .availability
+                        .as_ref()
+                        .and_then(|x| x.price_1k)
+                        .unwrap_or(f64::MAX);
+                    pb.partial_cmp(&pa).unwrap_or(std::cmp::Ordering::Equal)
+                };
+                if preferred_manufacturer.is_some() {
+                    by_pref.then(by_score).then(by_cat).then(by_price)
+                } else {
+                    by_score.then(by_cat).then(by_price)
+                }
             });
 
         best.map(|solved| ComponentAssignment {
@@ -120,7 +156,7 @@ impl ComponentMapper {
                 "match_score": solved.match_score,
                 "constraint_satisfied": solved.constraint_satisfied,
                 "category": format!("{:?}", solved.component.category),
-                "preference": "mcu_over_fpga_then_price",
+                "preference": "mcu_over_fpga_then_pref_mfg_then_price",
             }),
         })
     }

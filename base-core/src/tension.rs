@@ -29,6 +29,14 @@ pub struct TensionReport {
     pub instruction_count: usize,
     pub call_edge_count: usize,
     pub block_tensions: Vec<BlockTension>,
+    /// Always false — Ψ scoring ≠ OS synthesis.
+    #[serde(default = "crate::honesty::generates_os_false")]
+    pub generates_os: bool,
+    /// Always false — confidence ≠ auto-fix complete.
+    #[serde(default = "crate::honesty::auto_fix_false")]
+    pub auto_fix_complete: bool,
+    #[serde(default = "crate::honesty::default_note")]
+    pub honesty: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -108,6 +116,9 @@ impl TensionMetric {
             instruction_count,
             call_edge_count,
             block_tensions,
+            generates_os: crate::honesty::GENERATES_OS,
+            auto_fix_complete: crate::honesty::AUTO_FIX_COMPLETE,
+            honesty: crate::honesty::NOTE.to_string(),
         }
     }
 
@@ -338,6 +349,9 @@ mod tests {
         assert!(report.overall_tension >= 0.0);
         assert!(report.overall_confidence >= 0.0 && report.overall_confidence <= 1.0);
         assert!(!report.block_tensions.is_empty());
+        assert!(!report.generates_os);
+        assert!(!report.auto_fix_complete);
+        assert!(report.honesty.contains("not_os_turnkey"));
     }
 
     #[test]

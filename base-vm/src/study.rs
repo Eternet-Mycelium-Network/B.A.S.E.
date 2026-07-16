@@ -29,6 +29,8 @@ pub struct StudyReport {
     pub continuous: bool,
     /// Always false — structural refine only, not full auto-fix.
     pub auto_fix_complete: bool,
+    /// Always false — study ≠ OS synthesis.
+    pub generates_os: bool,
     pub words_executed: Vec<String>,
 }
 
@@ -107,6 +109,7 @@ pub fn run_study(
         max_steps,
         continuous: policy.continuous,
         auto_fix_complete: false,
+        generates_os: false,
         words_executed: ctx.words_log.clone(),
     };
 
@@ -166,6 +169,7 @@ mod tests {
         };
         let (spec, report) = run_study(&sample_spec(), &policy, None).unwrap();
         assert!(!report.auto_fix_complete);
+        assert!(!report.generates_os);
         assert!(report.total_steps >= 1);
         assert!(matches!(
             report.stop_reason,

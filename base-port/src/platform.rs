@@ -33,6 +33,7 @@ pub struct PlatformComponent {
 pub struct PlatformInventory {
     pub claim: &'static str,
     pub generates_os: bool,
+    pub auto_fix_complete: bool,
     pub model: Option<String>,
     pub root_compatible: Vec<String>,
     pub cpu: CpuDiscovery,
@@ -217,10 +218,14 @@ pub fn build_platform_from_dtb_info(
     if missing.iter().any(|m| m == "uart") {
         guidance.push("No UART in DT — earlyprintk/console will need manual bind.".into());
     }
+    if (REQUIRED_CLASSES.len() - missing.len()) as f64 / REQUIRED_CLASSES.len() as f64 >= 1.0 {
+        guidance.push(base_core::READINESS_FULL_CAVEAT.into());
+    }
 
     PlatformInventory {
         claim: "platform_inventory_assist",
-        generates_os: false,
+        generates_os: base_core::GENERATES_OS,
+        auto_fix_complete: base_core::AUTO_FIX_COMPLETE,
         model: info.model.clone(),
         root_compatible: info.compatible.clone(),
         cpu,
@@ -240,7 +245,7 @@ pub fn build_platform_from_dtb_info(
             score,
             guidance,
         },
-        honesty: "Inventory from DTB/flash.cfg — ≠ full OS port; gaps stay Missing",
+        honesty: base_core::HONESTY_BANNER,
     }
 }
 
@@ -647,7 +652,7 @@ impl PlatformInventory {
     pub fn to_markdown(&self) -> String {
         let mut md = String::new();
         md.push_str("# PLATFORM_INVENTORY — OS port prerequisites\n\n");
-        md.push_str("> Descoberta a partir de **Device Tree** (+ hints). ≠ gera o OS.\n\n");
+        md.push_str(&format!("> {}\n\n", base_core::HONESTY_BANNER));
         if let Some(m) = &self.model {
             md.push_str(&format!("- model: **{m}**\n"));
         }
@@ -655,15 +660,24 @@ impl PlatformInventory {
             "- root compatible: `{}`\n",
             self.root_compatible.join(", ")
         ));
+        let pct = self.os_port_readiness.score * 100.0;
+        if self.os_port_readiness.score >= 1.0 {
+            md.push_str(&format!(
+                "- readiness score: **{pct:.0}%** (found {} / {}) — {}\n",
+                self.os_port_readiness.found.len(),
+                self.os_port_readiness.required.len(),
+                base_core::READINESS_FULL_CAVEAT
+            ));
+        } else {
+            md.push_str(&format!(
+                "- readiness score: **{pct:.0}%** (found {} / {})\n",
+                self.os_port_readiness.found.len(),
+                self.os_port_readiness.required.len()
+            ));
+        }
         md.push_str(&format!(
-            "- readiness score: **{:.0}%** (found {} / {})\n",
-            self.os_port_readiness.score * 100.0,
-            self.os_port_readiness.found.len(),
-            self.os_port_readiness.required.len()
-        ));
-        md.push_str(&format!(
-            "- generates_os: **{}**\n\n",
-            self.generates_os
+            "- generates_os: **{}** · auto_fix_complete: **{}**\n\n",
+            self.generates_os, self.auto_fix_complete
         ));
 
         md.push_str("## CPU\n\n");
@@ -710,7 +724,7 @@ impl PlatformInventory {
 
         md.push_str("\n## Missing (blockers)\n\n");
         if self.os_port_readiness.missing.is_empty() {
-            md.push_str("- (none in checklist — still ≠ OS complete)\n");
+            md.push_str(&format!("- (none in checklist) — {}\n", base_core::READINESS_FULL_CAVEAT));
         } else {
             for m in &self.os_port_readiness.missing {
                 md.push_str(&format!("- `{m}`\n"));
@@ -736,6 +750,8 @@ impl PlatformInventory {
         for c in &self.components {
             md.push_str(&format!("- **{}**: {}\n", c.class, c.rewrite_hint));
         }
+        md.push('\n');
+        md.push_str(&base_core::honesty_markdown());
         md
     }
 }
@@ -842,6 +858,7 @@ mod tests {
     fn rich_dtb_scores_high_readiness() {
         let inv = build_platform_from_dtb_info(&rich_dtb_info(), None, true);
         assert!(!inv.generates_os);
+        assert!(!inv.auto_fix_complete);
         assert!(
             inv.os_port_readiness.score >= 0.8,
             "score={}",
@@ -855,6 +872,12 @@ mod tests {
         let md = inv.to_markdown();
         assert!(md.contains("PLATFORM_INVENTORY"));
         assert!(md.contains("gic"));
+        assert!(md.contains("generates_os"));
+        assert!(md.contains("auto_fix_complete"));
+        assert!(
+            md.contains("Checklist 100%") || md.contains("≠ OS"),
+            "100% readiness must carry non-turnkey caveat"
+        );
     }
 
     #[test]

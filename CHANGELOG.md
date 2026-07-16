@@ -5,6 +5,8 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 ## [Unreleased]
 
 ### Added
+- Módulo `base-core::honesty` — banner partilhado: MMIO ≠ OS turnkey (`generates_os`/`auto_fix_complete` sempre false)
+- `TensionReport` + `PlatformInventory` + `StudyReport` emitem flags de honestidade; readiness 100% leva caveat inline
 - Filogenia: bandas SoC + Ψ híbrido (geno/pheno); NJ usa d_tree; validado G35 (boot↔kernel < lk)
 - Testes sintéticos THC / especiação / excavate+ref / platform DTB readiness
 - CLI `long_about` menciona `paleo` + `port`

@@ -409,9 +409,9 @@ impl StratAlignResult {
         if self.path.len() > 80 {
             md.push_str(&format!("\n… +{} steps\n", self.path.len() - 80));
         }
-        md.push_str("\n## Honesty\n\n");
-        md.push_str("- `generates_os: false` · `auto_fix_complete: false`\n");
-        md.push_str(&format!("- {}\n", self.honesty));
+        md.push('\n');
+        md.push_str(&crate::honesty_markdown());
+        md.push_str(&format!("- detail: {}\n", self.honesty));
         md
     }
 }

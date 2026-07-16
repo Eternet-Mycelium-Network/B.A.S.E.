@@ -94,8 +94,8 @@ pub fn build_port_package(
 
     PortPackage {
         claim: "port_package_assist",
-        generates_os: false,
-        auto_fix_complete: false,
+        generates_os: base_core::GENERATES_OS,
+        auto_fix_complete: base_core::AUTO_FIX_COMPLETE,
         target_hal: opts.target_hal,
         target_arch_note: opts.target_arch_note,
         address_driver_map,
@@ -125,7 +125,7 @@ impl PortPackage {
     pub fn to_markdown(&self) -> String {
         let mut md = String::new();
         md.push_str("# PORT_PACKAGE — atlas de port (B.A.S.E.)\n\n");
-        md.push_str("> **Não** gera OS completo. Mapeia drivers/endereços e fósseis para evitar reescrita cega.\n\n");
+        md.push_str(&format!("> {}\n\n", base_core::HONESTY_BANNER));
         md.push_str(&format!(
             "- claim: `{}` · generates_os: **{}** · auto_fix_complete: **{}**\n",
             self.claim, self.generates_os, self.auto_fix_complete
@@ -203,6 +203,8 @@ impl PortPackage {
         md.push_str("- `address_driver_map.yaml` — binds source→HAL\n");
         md.push_str("- `fossil_inventory.yaml` — não inventar\n");
         md.push_str("- `PORT_PACKAGE.md` — este atlas\n");
+        md.push_str("\n");
+        md.push_str(&base_core::honesty_markdown());
         md.push_str("\nRef: `base-vault/24 - Path to v1.4/` · Paleo map `22.31`\n");
         md
     }

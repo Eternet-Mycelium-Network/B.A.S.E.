@@ -313,6 +313,7 @@ pub enum Command {
 }
 
 /// `base paleo` — algoritmos da Paleocomputação Estrutural (assist)
+/// ≠ OS turnkey: generates_os=false · auto_fix_complete=false — MMIO alone ≠ complete OS
 #[derive(Subcommand)]
 pub enum PaleoCommand {
     /// StratAlign: alinhar duas sequências fósseis (Evidence YAML ou FossilSequence YAML)
@@ -363,6 +364,7 @@ pub enum PaleoCommand {
 }
 
 /// `base port` — HAL/driver port assist
+/// ≠ OS turnkey: generates_os=false · auto_fix_complete=false — DTB checklist ≠ bootable OS
 #[derive(Subcommand)]
 pub enum PortCommand {
     /// Build port package from analyze artefacts

@@ -74,6 +74,13 @@ jobs:
           ./examples/pilot_stm32/run_w1_spi.sh
           test -f examples/pilot_stm32/out_w1_spi/CASE_SUMMARY_W1.md
 
+      - name: Pilot X3 STM32 (USART+I2C1 opt-in)
+        timeout-minutes: 10
+        run: |
+          chmod +x examples/pilot_stm32/run_x3_i2c.sh
+          ./examples/pilot_stm32/run_x3_i2c.sh
+          test -f examples/pilot_stm32/out_x3_i2c/CASE_SUMMARY_X3.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

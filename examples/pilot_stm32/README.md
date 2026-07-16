@@ -24,6 +24,7 @@ cargo build -p base-cli
 python3 examples/pilot_stm32/gen_fw.py
 ./examples/pilot_stm32/run.sh          # USART-only (gate opt-in)
 ./examples/pilot_stm32/run_w1_spi.sh   # USART + SPI2 (W1; não substitui run.sh)
+./examples/pilot_stm32/run_x3_i2c.sh   # USART + I2C1 (X3; não substitui run.sh)
 ```
 
 Smoke inclui:
@@ -50,6 +51,15 @@ Smoke inclui:
 | Porquê SPI2 | SPI1 @ `0x40013000` colide com USART1 na mesma página 4K |
 | IRQ SPI2 | `0x24` (36) |
 
+## X3 — dual USART + I2C1
+
+| Campo | Valor |
+|-------|-------|
+| I2C1 | `0x40005400` → page `0x40005000` |
+| Classify | `0x40013000=uart,0x40005000=i2c` |
+| IRQ I2C1_EV | `0x1f` (31) |
+| Smoke | `run_x3_i2c.sh` |
+
 ## Arquivos
 
 | Arquivo | Papel |
@@ -58,11 +68,14 @@ Smoke inclui:
 | `fw.bin` | Blob Capstone (sintético) |
 | `mmio.json` | Acessos MMIO USART1 |
 | `mmio_usart_spi.json` | Dual USART+SPI2 (W1) |
+| `mmio_usart_i2c.json` | Dual USART+I2C1 (X3) |
 | `contracts.yaml` / `trace.csv` | Prove + replay USART |
 | `contracts_spi.yaml` / `trace_spi.csv` | Prove + replay SPI2 |
-| `pilot.bsl` / `pilot_spi.bsl` | BIR |
+| `contracts_i2c.yaml` / `trace_i2c.csv` | Prove + replay I2C1 |
+| `pilot.bsl` / `pilot_spi.bsl` / `pilot_i2c.bsl` | BIR |
 | `expected/` | Goldens W2 (verificados, não sobrescritos) |
-| `SHA256SUMS` / `SHA256SUMS.w1` | Integridade |
+| `SHA256SUMS` / `SHA256SUMS.w1` / `SHA256SUMS.x3` | Integridade |
 | `run.sh` | Smoke USART opt-in + goldens |
 | `run_w1_spi.sh` | Smoke dual W1 opt-in |
-| `out/` / `out_w1_spi/` | Gerado (gitignored) |
+| `run_x3_i2c.sh` | Smoke dual X3 opt-in |
+| `out/` / `out_w1_spi/` / `out_x3_i2c/` | Gerado (gitignored) |

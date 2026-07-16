@@ -63,6 +63,64 @@ grep -Eq 'PA9|PA10' "$SCH"
 echo "== prove =="
 "$BASE" prove "$PILOT/contracts.yaml" -o "$OUT/prove"
 
+echo "== event-graph + goldens (W2) =="
+"$BASE" event-graph "$PILOT/contracts.yaml" "$PILOT/trace.csv" \
+  --format dot -o "$OUT/event_graph"
+"$BASE" event-graph "$PILOT/contracts.yaml" "$PILOT/trace.csv" \
+  --format mermaid -o "$OUT/event_graph"
+diff -u "$PILOT/expected/event_graph.dot" "$OUT/event_graph/event_graph.dot"
+diff -u "$PILOT/expected/event_graph.mmd" "$OUT/event_graph/event_graph.mmd"
+# Prove golden: stable fields only (omit smt_lib)
+python3 - "$OUT/prove/proof_report.json" "$PILOT/expected/proof_report.golden.json" <<'PY'
+import json, pathlib, sys
+actual_path = pathlib.Path(sys.argv[1])
+golden_path = pathlib.Path(sys.argv[2])
+src = json.loads(actual_path.read_text())
+got = {
+    "backend": src["backend"],
+    "contracts_proved": src["contracts_proved"],
+    "all_satisfied": src["all_satisfied"],
+    "results": [
+        {
+            "contract": r["contract"],
+            "satisfiable": r["satisfiable"],
+            "proved": r["proved"],
+            "backend": r["backend"],
+            "model": r["model"],
+        }
+        for r in src["results"]
+    ],
+}
+want = json.loads(golden_path.read_text())
+assert got == want, f"prove golden mismatch:\n got={got}\nwant={want}"
+print("prove golden OK")
+PY
+# HardwareSpec field allowlist
+python3 - "$OUT/analyze/hardware_spec.yaml" "$PILOT/expected/hardware_spec.fields.yaml" <<'PY'
+import pathlib, sys
+spec = pathlib.Path(sys.argv[1]).read_text()
+fields = pathlib.Path(sys.argv[2]).read_text()
+# Minimal parse of required_top_level list
+keys = []
+in_list = False
+for line in fields.splitlines():
+    if line.strip() == "required_top_level:":
+        in_list = True
+        continue
+    if in_list:
+        if line.startswith("  - "):
+            keys.append(line[4:].strip())
+        elif line and not line.startswith(" "):
+            break
+        elif line.startswith("required_"):
+            break
+assert keys, "no required_top_level keys"
+for k in keys:
+    assert f"{k}:" in spec or f"\n{k}:" in spec or spec.startswith(f"{k}:"), f"missing top-level key {k}"
+assert "40013000" in spec or "1073819648" in spec
+print(f"hardware_spec fields OK ({len(keys)} keys)")
+PY
+
 echo "== replay =="
 "$BASE" replay "$PILOT/trace.csv" \
   --contracts "$PILOT/contracts.yaml" \
@@ -80,6 +138,7 @@ summary.write_text(
     "- Wedge: STM32F103 USART1 @ 0x40013800\n"
     "- Capstone --disasm: synthetic AArch64 @ page 0x40013000 (V1; ≠ Thumb silicon)\n"
     "- Pins USART1: PA9/PA10 labels no draft PCB (V2; NOT FABRICABLE)\n"
+    "- Goldens W2: event-graph + prove vs expected/ (diff, não overwrite)\n"
     "- Prefer manufacturer: STMicroelectronics → STM32F103C8\n"
     "- Gate RP (`examples/pilot/run.sh`) intocado\n"
     f"- design bytes: {len(design)}\n"

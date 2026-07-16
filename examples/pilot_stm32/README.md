@@ -25,9 +25,19 @@ python3 examples/pilot_stm32/gen_fw.py
 ./examples/pilot_stm32/run_w1_spi.sh   # USART + SPI2 (W1; não substitui run.sh)
 ```
 
-Smoke USART inclui:
+Smoke inclui:
 1. `analyze --disasm` — Capstone resolve USART1 sem traces  
 2. `analyze --mmio-traces` — path feliz design/synth  
+3. **W2 goldens** — `diff` event-graph + prove fields vs `expected/`
+
+## Goldens (`expected/`)
+
+| Arquivo | Papel |
+|---------|-------|
+| `event_graph.dot` / `.mmd` | Causal graph USART (smoke `diff`) |
+| `proof_report.golden.json` | Prove simbólico estável (sem `smt_lib`) |
+| `hardware_spec.fields.yaml` | Allowlist de campos HardwareSpec |
+| `CASE_SUMMARY.template.md` | Campos estáveis do resumo |
 
 ## W1 — dual USART + SPI2
 
@@ -50,7 +60,8 @@ Smoke USART inclui:
 | `contracts.yaml` / `trace.csv` | Prove + replay USART |
 | `contracts_spi.yaml` / `trace_spi.csv` | Prove + replay SPI2 |
 | `pilot.bsl` / `pilot_spi.bsl` | BIR |
+| `expected/` | Goldens W2 (verificados, não sobrescritos) |
 | `SHA256SUMS` / `SHA256SUMS.w1` | Integridade |
-| `run.sh` | Smoke USART opt-in |
+| `run.sh` | Smoke USART opt-in + goldens |
 | `run_w1_spi.sh` | Smoke dual W1 opt-in |
 | `out/` / `out_w1_spi/` | Gerado (gitignored) |

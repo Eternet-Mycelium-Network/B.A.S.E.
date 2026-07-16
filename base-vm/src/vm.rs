@@ -1,8 +1,10 @@
 //! Forth-like Specter VM: dictionary + word execution over a study context.
 
 use crate::stack::{DataStack, StackError};
+use base_core::evidence::EvidenceDb;
 use base_core::loop_::FeedbackLoop;
 use base_core::spec::types::HardwareSpec;
+use base_core::tension::TensionMetric;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -51,6 +53,10 @@ pub struct StudyContext {
     pub last_structural_changes: usize,
     pub step: usize,
     pub words_log: Vec<String>,
+    /// Optional live/forensic EvidenceDb — when set, OBSERVE/SCORE use Ψ.
+    pub evidence: Option<EvidenceDb>,
+    /// Last Ψ confidence when scoring against evidence.
+    pub last_psi_confidence: f64,
 }
 
 impl StudyContext {
@@ -62,7 +68,68 @@ impl StudyContext {
             last_structural_changes: 0,
             step: 0,
             words_log: Vec::new(),
+            evidence: None,
+            last_psi_confidence: 0.0,
         }
+    }
+
+    pub fn with_evidence(mut self, evidence: EvidenceDb) -> Self {
+        self.evidence = Some(evidence);
+        self
+    }
+
+    fn score_from_evidence(&mut self) -> f64 {
+        let Some(ev) = self.evidence.as_ref() else {
+            return self.last_pass_rate;
+        };
+        let report = TensionMetric::compute(ev, &self.spec, 0, 0, 0);
+        self.last_psi_confidence = report.overall_confidence;
+        report.overall_confidence
+    }
+
+    /// Promote confidence / stub regs once per block for overlapping MMIO.
+    /// Returns 0 when already aligned → allows STAGNATE?.
+    fn refine_from_evidence(&mut self) -> usize {
+        let Some(ev) = self.evidence.as_ref() else {
+            return 0;
+        };
+        let addrs = ev.unique_mmio_addresses();
+        if addrs.is_empty() {
+            return 0;
+        }
+        let mut changes = 0usize;
+        for block in &mut self.spec.blocks {
+            let hits = addrs
+                .iter()
+                .filter(|a| {
+                    **a >= block.base_address && **a < block.base_address + block.size.max(1)
+                })
+                .count();
+            if hits == 0 {
+                continue;
+            }
+            let target = (0.55 + 0.03 * hits as f64).min(0.95);
+            if block.confidence + 1e-6 < target {
+                block.confidence = target;
+                changes += 1;
+            }
+            if block.registers.is_empty() {
+                block.registers.push(base_core::spec::types::Register {
+                    offset: 0,
+                    name: Some(format!("live_obs_{:x}", block.base_address)),
+                    width: 32,
+                    access: base_core::spec::types::AccessType::ReadWrite,
+                    purpose: base_core::spec::types::RegisterPurpose::UnknownPurpose,
+                    reset_value: None,
+                    observed_values: vec![],
+                    bitfields: vec![],
+                    polling: false,
+                    count: hits,
+                });
+                changes += 1;
+            }
+        }
+        changes
     }
 }
 
@@ -81,7 +148,6 @@ impl Vm {
     pub fn parse_program(src: &str) -> Result<Vec<Word>, VmError> {
         let mut out = Vec::new();
         for raw in src.split_whitespace() {
-            // skip Forth comments \( ... \) simple line comments starting with \
             if raw.starts_with('\\') {
                 break;
             }
@@ -95,24 +161,40 @@ impl Vm {
         ctx.words_log.push(format!("{:?}", word));
         match word {
             Word::Observe => {
-                let errors = ctx.loop_.analyze_errors_pub(&ctx.spec);
-                self.stack.push(errors.len() as i64);
+                if let Some(ev) = ctx.evidence.as_ref() {
+                    self.stack.push(ev.count() as i64);
+                } else {
+                    let errors = ctx.loop_.analyze_errors_pub(&ctx.spec);
+                    self.stack.push(errors.len() as i64);
+                }
                 Ok(())
             }
             Word::Score => {
-                let errors = ctx.loop_.analyze_errors_pub(&ctx.spec);
-                let rate = ctx.loop_.calculate_pass_rate_pub(&ctx.spec, &errors);
+                let rate = if ctx.evidence.is_some() {
+                    ctx.score_from_evidence()
+                } else {
+                    let errors = ctx.loop_.analyze_errors_pub(&ctx.spec);
+                    ctx.loop_.calculate_pass_rate_pub(&ctx.spec, &errors)
+                };
                 ctx.last_pass_rate = rate;
                 self.stack.push((rate * 1000.0).round() as i64);
                 Ok(())
             }
             Word::Refine => {
                 ctx.step += 1;
-                let iter = ctx.loop_.iterate(&ctx.spec, ctx.step);
-                ctx.spec = iter.spec.clone();
-                ctx.last_pass_rate = iter.pass_rate;
-                ctx.last_structural_changes = iter.structural_changes;
-                self.stack.push(iter.structural_changes as i64);
+                if ctx.evidence.is_some() {
+                    // Live path: evidence-only refine (FeedbackLoop fights Ψ — skip).
+                    let structural = ctx.refine_from_evidence();
+                    ctx.last_pass_rate = ctx.score_from_evidence();
+                    ctx.last_structural_changes = structural;
+                    self.stack.push(structural as i64);
+                } else {
+                    let iter = ctx.loop_.iterate(&ctx.spec, ctx.step);
+                    ctx.spec = iter.spec.clone();
+                    ctx.last_pass_rate = iter.pass_rate;
+                    ctx.last_structural_changes = iter.structural_changes;
+                    self.stack.push(iter.structural_changes as i64);
+                }
                 Ok(())
             }
             Word::StagnateQ => {
@@ -158,7 +240,9 @@ impl Vm {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base_core::evidence::{EvidenceEntry, EvidenceType};
     use base_core::spec::types::*;
+    use std::collections::HashMap;
 
     fn sample_spec() -> HardwareSpec {
         let mut spec = HardwareSpec::empty();
@@ -215,5 +299,25 @@ mod tests {
         let mut ctx = StudyContext::new(sample_spec(), 0.9, 10);
         let err = vm.exec_word(Word::Halt, &mut ctx).unwrap_err();
         assert!(matches!(err, VmError::Halt));
+    }
+
+    #[test]
+    fn live_evidence_observe_score() {
+        let mut db = EvidenceDb::new("live");
+        db.add(EvidenceEntry {
+            id: "e0".into(),
+            evidence_type: EvidenceType::MmioWrite {
+                address: 0x4003_4000,
+                value: Some(1),
+            },
+            context: HashMap::new(),
+        });
+        let mut vm = Vm::new();
+        let mut ctx = StudyContext::new(sample_spec(), 0.9, 10).with_evidence(db);
+        vm.exec_word(Word::Observe, &mut ctx).unwrap();
+        assert_eq!(vm.stack.pop().unwrap(), 1);
+        vm.exec_word(Word::Score, &mut ctx).unwrap();
+        assert!(ctx.last_pass_rate > 0.0);
+        assert!(ctx.last_psi_confidence > 0.0);
     }
 }

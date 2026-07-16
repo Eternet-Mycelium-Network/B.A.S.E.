@@ -13,6 +13,7 @@ serde_yaml = "0.9"
 thiserror = "2"
 tracing = "0.1"
 base-core = { path = "../base-core" }
+base-vm = { path = "../base-vm" }
 
 [lib]
 name = "base_virt"

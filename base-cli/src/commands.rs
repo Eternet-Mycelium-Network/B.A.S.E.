@@ -134,8 +134,8 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         Command::Hil { action } => {
             handle_hil(action, output)?;
         }
-        Command::Study { input, policy, program } => {
-            handle_study(input, policy.as_deref(), program.as_deref(), output)?;
+        Command::Study { input, policy, program, evidence } => {
+            handle_study(input, policy.as_deref(), program.as_deref(), evidence.as_deref(), output)?;
         }
         Command::Port { action } => {
             handle_port(action, output)?;
@@ -1596,6 +1596,7 @@ fn handle_study(
     input: &Path,
     policy_path: Option<&Path>,
     program_path: Option<&Path>,
+    evidence_path: Option<&Path>,
     output: &Path,
 ) -> Result<()> {
     tracing::info!("=== B.A.S.E. Specter study (Forth + Lua) — ≠ auto-fix ===");
@@ -1606,8 +1607,13 @@ fn handle_study(
         Some(p) => Some(fs::read_to_string(p)?),
         None => None,
     };
+    let evidence = match evidence_path {
+        Some(p) => Some(base_virt::load_evidence_flexible(p)?),
+        None => None,
+    };
+    let live = evidence.is_some();
     let (refined, report) =
-        base_vm::run_study(&spec, &policy, program_src.as_deref())?;
+        base_vm::run_study_with_evidence(&spec, evidence, &policy, program_src.as_deref())?;
 
     fs::create_dir_all(output)?;
     fs::write(
@@ -1617,8 +1623,9 @@ fn handle_study(
     let report_json = serde_json::to_string_pretty(&report)?;
     fs::write(output.join("study_report.json"), &report_json)?;
     tracing::info!(
-        "Study done: steps={} stop_reason={:?} auto_fix_complete={}",
+        "Study done: steps={} live={} stop_reason={:?} auto_fix_complete={}",
         report.total_steps,
+        live,
         report.stop_reason,
         report.auto_fix_complete
     );
@@ -1911,6 +1918,54 @@ fn handle_virt(action: &VirtCommand, output: &Path) -> Result<()> {
                     println!("{}", serde_json::to_string_pretty(&resp)?);
                 }
             }
+        }
+        VirtCommand::Study {
+            spec,
+            evidence,
+            policy,
+            program,
+            qmp_socket,
+        } => {
+            let spec = HardwareSpec::from_yaml(&fs::read_to_string(spec)?)?;
+            let ev = base_virt::load_evidence_flexible(evidence)?;
+            let pol = base_vm::load_policy(policy.as_deref())?;
+            let program_src = match program {
+                Some(p) => Some(fs::read_to_string(p)?),
+                None => None,
+            };
+            let (refined, report) = base_virt::run_live_study(
+                &spec,
+                ev,
+                &pol,
+                program_src.as_deref(),
+                qmp_socket.as_deref(),
+            )?;
+            fs::write(
+                output.join("hardware_spec_refined.yaml"),
+                refined.to_yaml()?,
+            )?;
+            fs::write(
+                output.join("live_study_report.json"),
+                serde_json::to_string_pretty(&report)?,
+            )?;
+            let md = format!(
+                "# Specter Live Study (E4)\n\n{}\n\n- live: {}\n- evidence: {}\n- steps: {}\n- final_pass_rate: {:.3}\n- psi: {:.3}\n- stop: {:?}\n- qmp_gated: {}\n- generates_os: false\n",
+                base_core::HONESTY_BANNER,
+                report.study.live,
+                report.study.evidence_count,
+                report.study.total_steps,
+                report.study.final_pass_rate,
+                report.study.final_psi_confidence,
+                report.study.stop_reason,
+                report.qmp_gated,
+            );
+            fs::write(output.join("CASE_SUMMARY_LIVE_STUDY.md"), md)?;
+            tracing::info!(
+                "Live study: steps={} conf={:.3} qmp_gated={}",
+                report.study.total_steps,
+                report.study.final_pass_rate,
+                report.qmp_gated
+            );
         }
     }
     Ok(())

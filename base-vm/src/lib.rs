@@ -10,5 +10,5 @@ pub mod vm;
 
 pub use policy::{load_policy, load_policy_str, StudyPolicy, DEFAULT_POLICY_LUA};
 pub use stack::DataStack;
-pub use study::{run_study, StudyReport, StudyStep};
-pub use vm::{Vm, VmError, Word};
+pub use study::{run_study, run_study_with_evidence, StudyReport, StudyStep, DEFAULT_STEP_PROGRAM};
+pub use vm::{StudyContext, Vm, VmError, Word};

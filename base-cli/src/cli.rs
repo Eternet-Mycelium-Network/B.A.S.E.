@@ -297,6 +297,10 @@ pub enum Command {
         /// Forth program for each step (default OBSERVE SCORE REFINE …)
         #[arg(long)]
         program: Option<PathBuf>,
+
+        /// Optional EvidenceDb YAML or NDJSON — enables live Ψ OBSERVE/SCORE (E4)
+        #[arg(long)]
+        evidence: Option<PathBuf>,
     },
 
     /// Port package: address/driver map + fossils + atlas (≠ OS rewrite)
@@ -462,6 +466,29 @@ pub enum VirtCommand {
         /// JSON for `raw` (e.g. '{"execute":"query-status"}')
         #[arg(long)]
         raw: Option<String>,
+    },
+
+    /// Study↔Live (E4): Forth OBSERVE/SCORE/REFINE over NDJSON/Evidence (+ optional QMP gate)
+    Study {
+        /// HardwareSpec YAML
+        #[arg(long)]
+        spec: PathBuf,
+
+        /// Evidence YAML or NDJSON trace
+        #[arg(long)]
+        evidence: PathBuf,
+
+        /// Lua policy (optional)
+        #[arg(long)]
+        policy: Option<PathBuf>,
+
+        /// Forth step program (optional)
+        #[arg(long)]
+        program: Option<PathBuf>,
+
+        /// Optional QMP socket — stop before study, cont after
+        #[arg(long)]
+        qmp_socket: Option<PathBuf>,
     },
 }
 

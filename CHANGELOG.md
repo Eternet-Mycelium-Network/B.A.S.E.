@@ -10,6 +10,7 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 - CLI `base virt ingest|score|run` · pilot `examples/pilot_moto_g35/run_virt_live.sh`
 - **E2** TCG plugin `base-virt/plugin/libbase_virt_ndjson.so` (make opt-in)
 - **E3** QMP client + CLI `base virt qmp` · `run --qmp --probe-qmp`
+- **E4** Study↔Live — `run_study_with_evidence` · `base virt study` · `base study --evidence`
 - Stub C legado `virt/qemu_ndjson_emit_stub.c` (device-side)
 - Módulo `base-core::honesty` — banner partilhado: MMIO ≠ OS turnkey (`generates_os`/`auto_fix_complete` sempre false)
 - `TensionReport` + `PlatformInventory` + `StudyReport` emitem flags de honestidade; readiness 100% leva caveat inline

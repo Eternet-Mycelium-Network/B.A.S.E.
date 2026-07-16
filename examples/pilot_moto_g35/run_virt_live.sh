@@ -73,4 +73,8 @@ else
 fi
 
 cp -f "$OUT/run/CASE_SUMMARY_VIRT.md" "$OUT/CASE_SUMMARY_G35_VIRT.md" 2>/dev/null || true
+
+# E4 Study↔Live
+"$BASE_BIN" virt study --spec "$SPEC" --evidence "$TRACE" \
+  -o "$OUT/study"
 echo "Specter Live OK → $OUT (generates_os=false)"

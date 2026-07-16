@@ -3,6 +3,7 @@
 use crate::policy::StudyPolicy;
 use crate::vm::{StudyContext, Vm, VmError, Word};
 use anyhow::Result;
+use base_core::evidence::EvidenceDb;
 use base_core::loop_::{StopReason, CONTINUOUS_ITERATION_CAP};
 use base_core::spec::types::HardwareSpec;
 use serde::Serialize;
@@ -32,6 +33,13 @@ pub struct StudyReport {
     /// Always false — study ≠ OS synthesis.
     pub generates_os: bool,
     pub words_executed: Vec<String>,
+    /// True when OBSERVE/SCORE used EvidenceDb (Specter Live / --evidence).
+    #[serde(default)]
+    pub live: bool,
+    #[serde(default)]
+    pub evidence_count: usize,
+    #[serde(default)]
+    pub final_psi_confidence: f64,
 }
 
 /// Default per-step Forth program when `--program` is omitted.
@@ -42,17 +50,32 @@ pub fn run_study(
     policy: &StudyPolicy,
     program_src: Option<&str>,
 ) -> Result<(HardwareSpec, StudyReport)> {
+    run_study_with_evidence(initial, None, policy, program_src)
+}
+
+/// Study loop with optional live/forensic EvidenceDb (E4 Specter Live).
+pub fn run_study_with_evidence(
+    initial: &HardwareSpec,
+    evidence: Option<EvidenceDb>,
+    policy: &StudyPolicy,
+    program_src: Option<&str>,
+) -> Result<(HardwareSpec, StudyReport)> {
     let max_steps = if policy.continuous {
         policy.max_steps.max(CONTINUOUS_ITERATION_CAP)
     } else {
         policy.max_steps
     };
 
+    let live = evidence.is_some();
+    let evidence_count = evidence.as_ref().map(|e| e.count()).unwrap_or(0);
+
     let step_prog = Vm::parse_program(program_src.unwrap_or(DEFAULT_STEP_PROGRAM))?;
     let mut vm = Vm::new();
     let mut ctx = StudyContext::new(initial.clone(), policy.threshold, max_steps);
+    if let Some(ev) = evidence {
+        ctx = ctx.with_evidence(ev);
+    }
 
-    // Baseline score
     let _ = vm.exec_word(Word::Score, &mut ctx);
     let initial_pass = ctx.last_pass_rate;
     ctx.words_log.clear();
@@ -111,6 +134,9 @@ pub fn run_study(
         auto_fix_complete: false,
         generates_os: false,
         words_executed: ctx.words_log.clone(),
+        live,
+        evidence_count,
+        final_psi_confidence: ctx.last_psi_confidence,
     };
 
     Ok((ctx.spec, report))
@@ -170,11 +196,40 @@ mod tests {
         let (spec, report) = run_study(&sample_spec(), &policy, None).unwrap();
         assert!(!report.auto_fix_complete);
         assert!(!report.generates_os);
+        assert!(!report.live);
         assert!(report.total_steps >= 1);
         assert!(matches!(
             report.stop_reason,
             StopReason::Converged | StopReason::Stagnated | StopReason::MaxIterations
         ));
         assert!(spec.blocks[0].registers[0].name.is_some());
+    }
+
+    #[test]
+    fn study_live_with_evidence() {
+        use base_core::evidence::{EvidenceDb, EvidenceEntry, EvidenceType};
+        use std::collections::HashMap;
+        let mut db = EvidenceDb::new("t");
+        for i in 0..8 {
+            db.add(EvidenceEntry {
+                id: format!("e{i}"),
+                evidence_type: EvidenceType::MmioWrite {
+                    address: 0x4003_4000 + (i % 4) * 4,
+                    value: Some(i as u64),
+                },
+                context: HashMap::new(),
+            });
+        }
+        let policy = StudyPolicy {
+            threshold: 0.99,
+            max_steps: 8,
+            continuous: false,
+        };
+        let (_spec, report) =
+            run_study_with_evidence(&sample_spec(), Some(db), &policy, None).unwrap();
+        assert!(report.live);
+        assert_eq!(report.evidence_count, 8);
+        assert!(!report.generates_os);
+        assert!(report.final_psi_confidence > 0.0 || report.final_pass_rate > 0.0);
     }
 }

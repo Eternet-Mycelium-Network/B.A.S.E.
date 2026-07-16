@@ -2,12 +2,13 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v1.0 (Path):** oferta **forense** com Capstone UART/SPI (RP; goldens `diff`) +
+> **Nota v1.0:** oferta **forense** com Capstone UART/SPI (RP; goldens `diff`) +
 > STM32 USART1 + SPI2 (**goldens** `expected_spi/`) + I2C1 pins/goldens + triple USART/SPI/I2C +
 > **TIM2 opt-in** (`run_z2_tim.sh`), Maturity Matrix sync, reconstruct com estagnação honesta
 > (`stop_reason`; ≠ auto-fix), HIL EXPERIMENTAL (`base hil` — ≠ production).
 > Port industrial = **consultoria + [SOW v1.0](base-vault/20%20-%20Path%20to%20v1.0/20.21%20-%20SOW%20Industrial%20Checklist.md)**.
 > Playbook: [Forensic Playbook v1.0](base-vault/20%20-%20Path%20to%20v1.0/20.20%20-%20Forensic%20Playbook.md) · [CHANGELOG](CHANGELOG.md).
+> Tag estável: [`v1.0.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.0.0).
 > **v1.0 ≠** produto industrial completo. Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” /
 > “HIL production” / “auto-fix completa” continuam arquivados.
 
@@ -127,8 +128,8 @@ Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” nem “aut
 ## Próximo passo imediato
 
 1. ✅ Path to Real → v0.9 (`v0.9.0`)
-2. ✅ Path to v1.0 Z0–Z5 → tag `v1.0.0-rc`
+2. ✅ Path to v1.0 → tag `v1.0.0` (promovido de `v1.0.0-rc`)
 3. Demo: `run.sh` + `pilot_stm32` + `run_w1_spi.sh` + `run_x3_i2c.sh` + `run_y3_triple.sh` + `run_z2_tim.sh`
 4. Pricing SaaS / port turnkey só com SOW
-5. Promoção `v1.0.0` após smoke estável (opcional)
+5. Próximo path / SOW industrial sob demanda
 6. **v1.0 ≠** produto industrial completo / ASIC drop-in

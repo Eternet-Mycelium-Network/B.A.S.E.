@@ -193,6 +193,7 @@ dependencies = [
  "base-hil",
  "base-pcb",
  "base-port",
+ "base-virt",
  "base-vm",
  "clap 4.6.1",
  "serde",
@@ -283,6 +284,20 @@ dependencies = [
  "serde_yaml",
  "specter-probe",
  "tempfile",
+ "tracing",
+]
+
+[[package]]
+name = "base-virt"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base-core",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror",
  "tracing",
 ]
 

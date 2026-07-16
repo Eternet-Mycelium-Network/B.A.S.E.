@@ -28,7 +28,7 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
-use crate::cli::{Command, HilCommand, PaleoCommand, PortCommand};
+use crate::cli::{Command, HilCommand, PaleoCommand, PortCommand, VirtCommand};
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
     match cmd {
@@ -142,6 +142,9 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         }
         Command::Paleo { action } => {
             handle_paleo(action, output)?;
+        }
+        Command::Virt { action } => {
+            handle_virt(action, output)?;
         }
     }
     Ok(())
@@ -1619,6 +1622,146 @@ fn handle_study(
         report.stop_reason,
         report.auto_fix_complete
     );
+    Ok(())
+}
+
+fn handle_virt(action: &VirtCommand, output: &Path) -> Result<()> {
+    fs::create_dir_all(output)?;
+    tracing::info!("=== B.A.S.E. Specter Live (virt) — ≠ OS turnkey ===");
+    tracing::info!("{}", base_core::HONESTY_BANNER);
+
+    match action {
+        VirtCommand::Ingest { trace } => {
+            let db = base_virt::ingest_ndjson_path(trace, "specter_live")?;
+            fs::write(output.join("evidence_db.yaml"), db.to_yaml()?)?;
+            let summary = serde_json::json!({
+                "phase": "virt_ingest",
+                "entries": db.count(),
+                "unique_mmio": db.unique_mmio_addresses().len(),
+                "generates_os": false,
+                "auto_fix_complete": false,
+                "honesty": base_core::HONESTY_NOTE,
+            });
+            fs::write(
+                output.join("ingest_summary.json"),
+                serde_json::to_string_pretty(&summary)?,
+            )?;
+            tracing::info!("Ingested {} evidence entries", db.count());
+        }
+        VirtCommand::Score {
+            spec,
+            evidence,
+            window_size,
+            max_windows,
+        } => {
+            let spec = HardwareSpec::from_yaml(&fs::read_to_string(spec)?)?;
+            let db = base_core::evidence::EvidenceDb::from_yaml(&fs::read_to_string(evidence)?)?;
+            let tension = base_core::tension::TensionMetric::compute(&db, &spec, 0, 0, 0);
+            fs::write(
+                output.join("tension_report.json"),
+                base_core::tension::TensionMetric::to_json(&tension)?,
+            )?;
+            let cfg = base_virt::LiveConfig {
+                window_size: (*window_size).max(1),
+                max_windows: *max_windows,
+                ..Default::default()
+            };
+            let session = base_virt::run_live_windows(&db, &spec, &cfg);
+            fs::write(output.join("virt_session.yaml"), session.to_yaml()?)?;
+            fs::write(output.join("virt_session.json"), session.to_json_pretty()?)?;
+            tracing::info!(
+                "Score: confidence={:.3} conclusiveness={:?} windows={}",
+                session.final_confidence,
+                session.final_conclusiveness,
+                session.windows.len()
+            );
+        }
+        VirtCommand::Run {
+            spec,
+            trace,
+            kernel,
+            qemu,
+            timeout_sec,
+            window_size,
+            max_windows,
+            no_qemu,
+        } => {
+            let spec = HardwareSpec::from_yaml(&fs::read_to_string(spec)?)?;
+            let mut qemu_exit = None;
+            let mut qemu_bin = None;
+            let mut kernel_s = None;
+
+            if !no_qemu {
+                if let Some(k) = kernel {
+                    let opts = base_virt::QemuLaunchOpts {
+                        bin: qemu.clone(),
+                        kernel: Some(k.clone()),
+                        timeout_sec: *timeout_sec,
+                        log_path: output.join("qemu.log"),
+                        ..Default::default()
+                    };
+                    let launch = base_virt::launch_qemu(&opts)?;
+                    qemu_bin = Some(launch.bin.clone());
+                    kernel_s = launch.kernel.clone();
+                    qemu_exit = launch.exit_code;
+                    fs::write(
+                        output.join("qemu_launch.json"),
+                        serde_json::to_string_pretty(&launch)?,
+                    )?;
+                    if launch.skipped {
+                        tracing::warn!(
+                            "QEMU skipped: {}",
+                            launch.skip_reason.as_deref().unwrap_or("unknown")
+                        );
+                    }
+                } else {
+                    tracing::warn!("--kernel omitted; QEMU not launched (use --no-qemu to silence)");
+                }
+            }
+
+            let db = if let Some(t) = trace {
+                base_virt::ingest_ndjson_path(t, "specter_live")?
+            } else {
+                tracing::warn!("No --trace: session will have empty evidence (smoke-only)");
+                base_core::evidence::EvidenceDb::new("specter_live_empty")
+            };
+            fs::write(output.join("evidence_live.yaml"), db.to_yaml()?)?;
+
+            let cfg = base_virt::LiveConfig {
+                window_size: (*window_size).max(1),
+                max_windows: *max_windows,
+                ..Default::default()
+            };
+            let mut session = base_virt::run_live_windows(&db, &spec, &cfg);
+            session.qemu_exit = qemu_exit;
+            session.qemu_bin = qemu_bin;
+            session.kernel = kernel_s;
+            if db.count() == 0 && session.skip_reason.is_none() {
+                session.ok = qemu_exit.is_some();
+                session.note =
+                    "QEMU smoke without NDJSON — set --trace for Ψ live".into();
+            }
+            fs::write(output.join("virt_session.yaml"), session.to_yaml()?)?;
+            fs::write(output.join("virt_session.json"), session.to_json_pretty()?)?;
+
+            let md = format!(
+                "# Specter Live session\n\n{}\n\n- evidence: {}\n- windows: {}\n- final_confidence: {:.3}\n- conclusiveness: {:?}\n- qemu_exit: {:?}\n- generates_os: false\n- auto_fix_complete: false\n",
+                base_core::HONESTY_BANNER,
+                session.total_evidence,
+                session.windows.len(),
+                session.final_confidence,
+                session.final_conclusiveness,
+                session.qemu_exit,
+            );
+            fs::write(output.join("CASE_SUMMARY_VIRT.md"), md)?;
+            tracing::info!(
+                "Virt run: evidence={} conf={:.3} qemu_exit={:?}",
+                session.total_evidence,
+                session.final_confidence,
+                session.qemu_exit
+            );
+        }
+    }
     Ok(())
 }
 

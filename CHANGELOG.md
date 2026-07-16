@@ -5,6 +5,10 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 ## [Unreleased]
 
 ### Added
+- **Path to v1.5 / Specter Live** — vault `base-vault/25 - Path to v1.5/` (algoritmo QEMU→Evidence→Ψ)
+- Crate `base-virt` — NDJSON ingest, Ψ em janelas, launcher QEMU opt-in
+- CLI `base virt ingest|score|run` · pilot `examples/pilot_moto_g35/run_virt_live.sh`
+- Stub C `virt/qemu_ndjson_emit_stub.c` (E2)
 - Módulo `base-core::honesty` — banner partilhado: MMIO ≠ OS turnkey (`generates_os`/`auto_fix_complete` sempre false)
 - `TensionReport` + `PlatformInventory` + `StudyReport` emitem flags de honestidade; readiness 100% leva caveat inline
 - Filogenia: bandas SoC + Ψ híbrido (geno/pheno); NJ usa d_tree; validado G35 (boot↔kernel < lk)

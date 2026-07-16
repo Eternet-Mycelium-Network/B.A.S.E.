@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[command(name = "base", version, about = "B.A.S.E. — Behavioral ASIC Synthesis Engine")]
 #[command(long_about = "Transform hardware behavior into new PCB + firmware.
   Pipeline: analyze → synth → pcb → fw → check → evolve
-  Assist: paleo (StratAlign / excavate / phylo) · port (package / platform DTB)
+  Assist: paleo (StratAlign / excavate / phylo) · port (package / platform DTB) · virt (Specter Live)
   Honesty: generates_os=false · auto_fix_complete=false by default")]
 pub struct Cli {
     #[command(subcommand)]
@@ -310,6 +310,12 @@ pub enum Command {
         #[command(subcommand)]
         action: PaleoCommand,
     },
+
+    /// Specter Live: QEMU/VM NDJSON → Evidence → Ψ (≠ OS turnkey / ≠ HIL production)
+    Virt {
+        #[command(subcommand)]
+        action: VirtCommand,
+    },
 }
 
 /// `base paleo` — algoritmos da Paleocomputação Estrutural (assist)
@@ -360,6 +366,67 @@ pub enum PaleoCommand {
         /// Optional stratum Δt per taxon (same order); default 1,2,3…
         #[arg(long)]
         delta_t: Vec<f64>,
+    },
+}
+
+/// `base virt` — Specter Live (QEMU / NDJSON → Evidence → Ψ)
+/// ≠ OS turnkey: generates_os=false · auto_fix_complete=false — VM live ≠ SO completo
+#[derive(Subcommand)]
+pub enum VirtCommand {
+    /// Ingest NDJSON MMIO/IRQ → EvidenceDb YAML
+    Ingest {
+        /// NDJSON trace (plugin / device / synthetic)
+        trace: PathBuf,
+    },
+
+    /// Score EvidenceDb against HardwareSpec (single Ψ report + optional windows)
+    Score {
+        /// HardwareSpec YAML
+        #[arg(long)]
+        spec: PathBuf,
+
+        /// Evidence DB YAML
+        #[arg(long)]
+        evidence: PathBuf,
+
+        /// Window size for live-style cumulative Ψ (0 = single full score only)
+        #[arg(long, default_value_t = 32)]
+        window_size: usize,
+
+        #[arg(long, default_value_t = 64)]
+        max_windows: usize,
+    },
+
+    /// Launch QEMU (opt-in) + ingest NDJSON + Ψ windows → virt_session
+    Run {
+        /// HardwareSpec YAML
+        #[arg(long)]
+        spec: PathBuf,
+
+        /// NDJSON live/sidecar trace (required for Ψ; QEMU alone is smoke)
+        #[arg(long)]
+        trace: Option<PathBuf>,
+
+        /// Kernel/firmware image for QEMU (-kernel)
+        #[arg(long)]
+        kernel: Option<PathBuf>,
+
+        /// QEMU binary (default qemu-system-aarch64)
+        #[arg(long, default_value = "qemu-system-aarch64")]
+        qemu: String,
+
+        #[arg(long, default_value_t = 8)]
+        timeout_sec: u64,
+
+        #[arg(long, default_value_t = 32)]
+        window_size: usize,
+
+        #[arg(long, default_value_t = 64)]
+        max_windows: usize,
+
+        /// Skip QEMU launch (trace-only live score)
+        #[arg(long, default_value_t = false)]
+        no_qemu: bool,
     },
 }
 

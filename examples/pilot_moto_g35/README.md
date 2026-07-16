@@ -6,14 +6,16 @@ Unisoc T760 / AArch64. **≠** TaurOS completo gerado pelo B.A.S.E.
 |------|--------|
 | A Forense | `./run.sh` |
 | B QEMU | `./run_qemu_smoke.sh` (`HIL_FW_IMAGE=…`) |
+| B+ Specter Live | `./run_virt_live.sh` (NDJSON→Ψ; QEMU opcional) |
 | C Hardware | [SOP.md](SOP.md) + `hw_boot_receipt.example.json` |
 
 ```bash
 python3 gen_boot.py   # ANDROID! synth + mmio
 ./run.sh
+./run_virt_live.sh    # Path to v1.5 — ≠ TaurOS
 ```
 
-Vault: `base-vault/24 - Path to v1.4/`
+Vault: `base-vault/24 - Path to v1.4/` · `base-vault/25 - Path to v1.5/`
 
 ## Firmware real (Firmware.zip)
 

@@ -24,6 +24,7 @@ tags:
 | **MMU** | Memory Management Unit. Unidade de gerenciamento de memória. |
 | **PIO** | Programmable I/O (RP2350). Bloco de I/O programável via state machines. |
 | **S-Expression** | Formato de dados do KiCad baseado em listas aninhadas. |
+| **Specter Live** | Loop VM instrumentada → EvidenceDb → Ψ em janelas (`base virt`). ≠ OS turnkey. |
 | **SpecterProbe** | Pipeline de análise de firmware que alimenta o B.A.S.E. (9 camadas). |
 | **SSA** | Static Single Assignment. Forma de IR onde cada variável é atribuída exatamente uma vez. |
 | **Trace** | Sequência temporal de eventos (MMIO reads/writes, IRQs, DMA) capturada de hardware real. |

@@ -61,6 +61,7 @@ Smoke inclui:
 | Classify | `0x40013000=uart,0x40003000=spi` |
 | Porquê SPI2 | SPI1 @ `0x40013000` colide com USART1 na mesma página 4K |
 | IRQ SPI2 | `0x24` (36) |
+| Z1 goldens SPI | `expected_spi/` — event-graph + prove (`diff`) |
 
 ## X3 — dual USART + I2C1
 
@@ -98,6 +99,7 @@ Smoke inclui:
 | `pilot.bsl` / `pilot_spi.bsl` / `pilot_i2c.bsl` | BIR |
 | `expected/` | Goldens W2 USART (verificados, não sobrescritos) |
 | `expected_i2c/` | Goldens Y2 I2C1 (verificados, não sobrescritos) |
+| `expected_spi/` | Goldens Z1 SPI2 (verificados, não sobrescritos) |
 | `SHA256SUMS` / `SHA256SUMS.w1` / `SHA256SUMS.x3` / `SHA256SUMS.y3` | Integridade |
 | `run.sh` | Smoke USART opt-in + goldens |
 | `run_w1_spi.sh` | Smoke dual W1 opt-in |

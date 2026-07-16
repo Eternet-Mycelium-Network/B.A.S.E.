@@ -67,6 +67,38 @@ grep -Eq 'PB13|PB14|PB15' "$SCH"
 echo "== prove SPI2 contracts =="
 "$BASE" prove "$PILOT/contracts_spi.yaml" -o "$OUT/prove_spi"
 
+echo "== event-graph + goldens SPI (Z1) =="
+"$BASE" event-graph "$PILOT/contracts_spi.yaml" "$PILOT/trace_spi.csv" \
+  --format dot -o "$OUT/event_graph_spi"
+"$BASE" event-graph "$PILOT/contracts_spi.yaml" "$PILOT/trace_spi.csv" \
+  --format mermaid -o "$OUT/event_graph_spi"
+diff -u "$PILOT/expected_spi/event_graph.dot" "$OUT/event_graph_spi/event_graph.dot"
+diff -u "$PILOT/expected_spi/event_graph.mmd" "$OUT/event_graph_spi/event_graph.mmd"
+python3 - "$OUT/prove_spi/proof_report.json" "$PILOT/expected_spi/proof_report.golden.json" <<'PY'
+import json, pathlib, sys
+actual_path = pathlib.Path(sys.argv[1])
+golden_path = pathlib.Path(sys.argv[2])
+src = json.loads(actual_path.read_text())
+got = {
+    "backend": src["backend"],
+    "contracts_proved": src["contracts_proved"],
+    "all_satisfied": src["all_satisfied"],
+    "results": [
+        {
+            "contract": r["contract"],
+            "satisfiable": r["satisfiable"],
+            "proved": r["proved"],
+            "backend": r["backend"],
+            "model": r["model"],
+        }
+        for r in src["results"]
+    ],
+}
+want = json.loads(golden_path.read_text())
+assert got == want, f"prove golden mismatch:\n got={got}\nwant={want}"
+print("prove SPI golden OK")
+PY
+
 echo "== replay SPI2 =="
 "$BASE" replay "$PILOT/trace_spi.csv" \
   --contracts "$PILOT/contracts_spi.yaml" \
@@ -88,6 +120,7 @@ summary.write_text(
     "- Classify: `0x40013000=uart,0x40003000=spi`\n"
     "- SPI1 @ 0x40013000 omitted (4K page collision with USART1)\n"
     "- Pins SPI2: PB13/14/15 labels no draft PCB (X1; NOT FABRICABLE)\n"
+    "- Goldens Z1: event-graph + prove vs expected_spi/ (diff, não overwrite)\n"
     "- Prefer manufacturer: STMicroelectronics → STM32F103C8\n"
     "- Gate USART-only (`run.sh`) intocado\n"
     f"- design bytes: {len(design)}\n"

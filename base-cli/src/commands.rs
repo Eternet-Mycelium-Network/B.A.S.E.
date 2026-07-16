@@ -1971,6 +1971,30 @@ fn handle_virt(action: &VirtCommand, output: &Path) -> Result<()> {
                 report.qmp_gated
             );
         }
+        VirtCommand::Twin { spec, evidence } => {
+            let spec = HardwareSpec::from_yaml(&fs::read_to_string(spec)?)?;
+            let ev = base_virt::load_evidence_flexible(evidence)?;
+            let report = base_virt::compare_twin_guest(&spec, &ev);
+            fs::write(output.join("twin_guest.yaml"), report.to_yaml()?)?;
+            fs::write(output.join("twin_guest.json"), report.to_json_pretty()?)?;
+            let md = format!(
+                "# Twin↔guest (v1.6)\n\n{}\n\n- hit_rate: {:.3}\n- hits: {}\n- misses: {}\n- psi: {:.3}\n- twin_only: {:?}\n- generates_os: false\n",
+                base_core::HONESTY_BANNER,
+                report.hit_rate,
+                report.hits,
+                report.misses,
+                report.psi_confidence,
+                report.twin_only_blocks,
+            );
+            fs::write(output.join("CASE_SUMMARY_TWIN_GUEST.md"), md)?;
+            tracing::info!(
+                "Twin↔guest: hit_rate={:.3} hits={} misses={} psi={:.3}",
+                report.hit_rate,
+                report.hits,
+                report.misses,
+                report.psi_confidence
+            );
+        }
     }
     Ok(())
 }

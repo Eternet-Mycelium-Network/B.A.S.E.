@@ -494,6 +494,17 @@ pub enum VirtCommand {
         #[arg(long)]
         qmp_socket: Option<PathBuf>,
     },
+
+    /// Twin↔guest (v1.6): Spec MMIO shadow vs Evidence — hit/miss/Ψ
+    Twin {
+        /// HardwareSpec YAML (modelo / twin)
+        #[arg(long)]
+        spec: PathBuf,
+
+        /// Evidence YAML or NDJSON (guest)
+        #[arg(long)]
+        evidence: PathBuf,
+    },
 }
 
 /// `base port` — HAL/driver port assist

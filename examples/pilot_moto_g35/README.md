@@ -7,6 +7,7 @@ Unisoc T760 / AArch64. **≠** TaurOS completo gerado pelo B.A.S.E.
 | A Forense | `./run.sh` |
 | B QEMU | `./run_qemu_smoke.sh` (`HIL_FW_IMAGE=…`) |
 | B+ Specter Live | `./run_virt_live.sh` (NDJSON→Ψ; QEMU opcional) |
+| Twin↔guest | `base virt twin --spec virt/hardware_spec_mame_stub.yaml --evidence …` |
 | C Hardware | [SOP.md](SOP.md) + `hw_boot_receipt.example.json` |
 
 ```bash

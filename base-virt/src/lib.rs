@@ -1,8 +1,7 @@
 //! Specter Live — VM comportamental (QEMU primário).
 //!
-//! Ingest NDJSON MMIO/IRQ → [`EvidenceDb`] → Ψ em janelas.
-//! Plugin TCG (`plugin/`) + QMP (`qmp`) + Study↔Live (`study_live`) +
-//! TraceSource adapters (`source`) — ≠ OS turnkey · ≠ HIL production.
+//! Ingest → Ψ → study · Plugin/QMP · TraceSource · Twin↔guest (v1.6).
+//! ≠ OS turnkey · ≠ HIL production.
 
 pub mod live;
 pub mod qemu;
@@ -11,6 +10,7 @@ pub mod session;
 pub mod source;
 pub mod study_live;
 pub mod trace;
+pub mod twin_guest;
 
 pub use live::{run_live_windows, LiveConfig, LiveWindowScore};
 pub use qemu::{
@@ -27,3 +27,4 @@ pub use study_live::{load_evidence_flexible, run_live_study, LiveStudyReport};
 pub use trace::{
     ingest_ndjson, ingest_ndjson_path, parse_ndjson_line, TraceEvent, TraceSourceError,
 };
+pub use twin_guest::{compare_twin_guest, TwinGuestReport};

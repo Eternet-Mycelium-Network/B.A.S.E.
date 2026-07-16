@@ -4,6 +4,10 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ## [Unreleased]
 
+### Added
+- **Path to v1.6 F0** — Twin↔guest (`base virt twin`) + vault `26 - Path to v1.6/`
+- Spec stub MAME `hardware_spec_mame_stub.yaml` (`0xA00000`) alinhado ao sample
+
 ### Added (pré-v1.5, já em main)
 - Módulo `base-core::honesty` · filogenia / StratAlign / paleo · `base-port` platform DTB
 - Ver commits `a3b1643`…`ef9c0e6` e vault Path v1.4 [[24.40]]

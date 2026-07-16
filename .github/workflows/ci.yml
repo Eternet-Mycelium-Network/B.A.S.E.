@@ -30,7 +30,8 @@ jobs:
         run: |
           cargo test -p base-hil
           cargo build -p base-hil
-          # compile-only — sem probe USB; flash real é rejeitado pela API
+          # default: sem feature hil_usb / sem libusb — USB enumerate é opt-in local
+          # flash real continua FlashDenied / ProgrammerUnimplemented (U3)
 
       - name: Pilot smoke (Path to Real v0.2 / R0–R6)
         timeout-minutes: 15

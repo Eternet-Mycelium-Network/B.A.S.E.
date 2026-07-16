@@ -2,16 +2,22 @@
 use std::path::Path;
 
 use crate::probe::ProbeFirmware;
+use crate::usb;
 
 /// Env: força [`ProbePresence::Detected`] sem USB (só testes/offline).
 pub const ENV_MOCK_DETECTED: &str = "BASE_HIL_MOCK_DETECTED";
+
+/// VID canônico do stub RP2350 (`probe.rs`).
+pub const DEFAULT_PROBE_VID: u16 = 0xCAFE;
+/// PID canônico do stub RP2350 (`probe.rs`).
+pub const DEFAULT_PROBE_PID: u16 = 0x4007;
 
 /// Presença de hardware. Flash real só com [`ProbePresence::Detected`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProbePresence {
     /// Sem USB/CMSIS-DAP — default do CI e de `connect`.
     Simulated,
-    /// Probe reconhecido (mock via env/`with_presence`, ou futuro USB).
+    /// Probe reconhecido (mock via env/`with_presence`, ou USB com feature `hil_usb`).
     Detected,
 }
 
@@ -63,7 +69,9 @@ pub struct HilAgent {
 }
 
 impl HilAgent {
-    /// Enumeração offline. Sem USB real: Simulated, salvo `BASE_HIL_MOCK_DETECTED`.
+    /// Enumeração: mock env → USB (`hil_usb`) → Simulated.
+    ///
+    /// Sem feature `hil_usb`, USB nunca é consultado (CI default).
     pub fn enumerate_presence(vid: u16, pid: u16) -> ProbePresence {
         if std::env::var_os(ENV_MOCK_DETECTED).is_some() {
             tracing::warn!(
@@ -73,7 +81,9 @@ impl HilAgent {
             );
             return ProbePresence::Detected;
         }
-        let _ = (vid, pid);
+        if usb::usb_device_present(vid, pid) {
+            return ProbePresence::Detected;
+        }
         ProbePresence::Simulated
     }
 
@@ -241,7 +251,7 @@ mod tests {
 
     #[test]
     fn test_agent_connect_is_simulated() {
-        let agent = HilAgent::connect(0xCAFE, 0x4007).unwrap();
+        let agent = HilAgent::connect(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID).unwrap();
         assert_eq!(agent.presence(), ProbePresence::Simulated);
         assert!(!agent.can_flash());
     }
@@ -256,8 +266,22 @@ mod tests {
     }
 
     #[test]
+    fn test_enumerate_without_hil_usb_feature_is_simulated() {
+        #[cfg(not(feature = "hil_usb"))]
+        {
+            // Sem mock env e sem feature: Simulated (não consulta libusb).
+            if std::env::var_os(ENV_MOCK_DETECTED).is_none() {
+                assert_eq!(
+                    HilAgent::enumerate_presence(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID),
+                    ProbePresence::Simulated
+                );
+            }
+        }
+    }
+
+    #[test]
     fn test_flash_denied_without_probe() {
-        let agent = HilAgent::connect(0xCAFE, 0x4007).unwrap();
+        let agent = HilAgent::connect(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID).unwrap();
         assert_eq!(agent.try_flash(&[0u8; 4]), Err(FlashDenied::NotDetected));
         let err = agent.flash_probe_firmware(&[0u8; 4]).unwrap_err();
         assert!(err.contains("EXPERIMENTAL"));
@@ -291,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_read_samples() {
-        let agent = HilAgent::connect(0xCAFE, 0x4007).unwrap();
+        let agent = HilAgent::connect(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID).unwrap();
         let samples = agent.read_samples(10);
         assert_eq!(samples.len(), 10);
         assert_eq!(samples[0].address, 0x1000);
@@ -299,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_samples_to_trace() {
-        let agent = HilAgent::connect(0xCAFE, 0x4007).unwrap();
+        let agent = HilAgent::connect(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID).unwrap();
         let samples = agent.read_samples(5);
         let trace = HilAgent::samples_to_trace(&samples);
         assert_eq!(trace.events.len(), 5);
@@ -309,7 +333,7 @@ mod tests {
 
     #[test]
     fn test_export_csv() {
-        let agent = HilAgent::connect(0xCAFE, 0x4007).unwrap();
+        let agent = HilAgent::connect(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID).unwrap();
         let samples = agent.read_samples(3);
         let dir = tempdir().unwrap();
         let path = dir.path().join("capture.csv");
@@ -334,5 +358,16 @@ mod tests {
         HilAgent::write_probe_stub(&path).unwrap();
         let fw = std::fs::read_to_string(&path).unwrap();
         assert!(fw.contains("HIL Probe"));
+    }
+
+    /// Hardware-only: requer `--features hil_usb` + probe `0xCAFE:0x4007` ligado.
+    #[cfg(feature = "hil_usb")]
+    #[test]
+    #[ignore = "requires USB probe 0xCAFE:0x4007"]
+    fn test_usb_enumerate_hardware() {
+        assert_eq!(
+            HilAgent::enumerate_presence(DEFAULT_PROBE_VID, DEFAULT_PROBE_PID),
+            ProbePresence::Detected
+        );
     }
 }

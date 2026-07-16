@@ -1,32 +1,26 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`.
 
 ## [Unreleased]
 
+### Added (pré-v1.5, já em main)
+- Módulo `base-core::honesty` · filogenia / StratAlign / paleo · `base-port` platform DTB
+- Ver commits `a3b1643`…`ef9c0e6` e vault Path v1.4 [[24.40]]
+
+## [v1.5.0-rc] — 2026-07-16
+
+Path to v1.5: **Specter Live** (QEMU→Evidence→Ψ→study; adapters MAME/libretro).
+≠ OS turnkey · ≠ HIL production · ≠ emuladores embutidos.
+
 ### Added
-- **Path to v1.5 / Specter Live** — vault `base-vault/25 - Path to v1.5/` (algoritmo QEMU→Evidence→Ψ)
-- Crate `base-virt` — NDJSON ingest, Ψ em janelas, launcher QEMU opt-in
-- CLI `base virt ingest|score|run` · pilot `examples/pilot_moto_g35/run_virt_live.sh`
-- **E2** TCG plugin `base-virt/plugin/libbase_virt_ndjson.so` (make opt-in)
-- **E3** QMP client + CLI `base virt qmp` · `run --qmp --probe-qmp`
-- **E4** Study↔Live — `run_study_with_evidence` · `base virt study` · `base study --evidence`
-- Stub C legado `virt/qemu_ndjson_emit_stub.c` (device-side)
-- Módulo `base-core::honesty` — banner partilhado: MMIO ≠ OS turnkey (`generates_os`/`auto_fix_complete` sempre false)
-- `TensionReport` + `PlatformInventory` + `StudyReport` emitem flags de honestidade; readiness 100% leva caveat inline
-- Filogenia: bandas SoC + Ψ híbrido (geno/pheno); NJ usa d_tree; validado G35 (boot↔kernel < lk)
-- Testes sintéticos THC / especiação / excavate+ref / platform DTB readiness
-- CLI `long_about` menciona `paleo` + `port`
-- **Filogenia Computacional** (`base-core/src/phylo.rs`) — G(B)/λ, d_φ=Ψ·exp(−λ̄Δt), Neighbor-Joining, THC/homoplasia, Newick + cladograma
-- CLI `base paleo phylo` (≥2 EvidenceDb → `PHYLO_ATLAS.md`, `tree.nwk`)
-- **StratAlign** (`base-core/src/strat_align.rs`) — DP §7.1 PaleoComputação: alinhamento de sequências fósseis com gap ∝ meia-vida
-- **Paleo excavate** (`base-core/src/paleo.rs`) — pipeline Ω → Ψ → atlas (PDF §8 assist)
-- CLI `base paleo align` / `base paleo excavate`
-- Crate `base-port` + CLI `base port package` — address/driver map, fossil inventory, `PORT_PACKAGE.md`, optional `hal_mmio_stub.c`
-- CLI `base port platform` — inventário OS-port a partir de DTB/DTBO/vendor_boot (CPU/GIC/timer/MMU/DRAM/UART/GPIO/PMIC/UFS/GPU)
-- `port package --dtb` / `--flash-cfg` emite `PLATFORM_INVENTORY.md`
-- Pilots G35/iMac emitem `out/port_package/` após fase A; `run_real_fw.sh` gera `platform_vendor_boot/`
-- Vault [[24.40 - Port Package]]
+- Vault `base-vault/25 - Path to v1.5/`
+- Crate `base-virt` + CLI `base virt ingest|score|run|qmp|study`
+- E2 TCG plugin `base-virt/plugin/` · E3 QMP · E4 Study↔Live · E5 `TraceSource` (ndjson/mame/libretro)
+- Pilot `examples/pilot_moto_g35/run_virt_live.sh`
+
+### Not
+- MAME/RetroArch runtime in-tree · plugin no CI default · claim TaurOS/ReactOS
 
 ## [v1.4.0-rc] — 2026-07-16
 

@@ -9,11 +9,11 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **Tag [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc)** · HIL [`v1.3.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.3.0-rc) · Gate [`v1.2.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0) · [CHANGELOG](CHANGELOG.md)
+> **Tag [`v1.5.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.5.0-rc)** · OS-port [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc) · HIL [`v1.3.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.3.0-rc) · [CHANGELOG](CHANGELOG.md)
 >
-> Specter + Industrial Gate + HIL Lab + **[OS Port Validation Assist](base-vault/24%20-%20Path%20to%20v1.4/24.00%20-%20Index.md)** (G35 / iMac G3).
+> Specter Live + OS Port Validation Assist (G35 / iMac G3).
 >
-> Demo: `./examples/pilot/run.sh` · `./examples/pilot_moto_g35/run.sh` · `./examples/pilot_imac_g3/run.sh`.
+> Demo: `./examples/pilot/run.sh` · `./examples/pilot_moto_g35/run_virt_live.sh` · `./examples/pilot_moto_g35/run.sh`.
 >
 > **Não** é port ReactOS/TaurOS turnkey, PCB fabricável nem HIL production.
 

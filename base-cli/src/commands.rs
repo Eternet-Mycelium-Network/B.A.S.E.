@@ -1638,11 +1638,15 @@ fn handle_virt(action: &VirtCommand, output: &Path) -> Result<()> {
     tracing::info!("{}", base_core::HONESTY_BANNER);
 
     match action {
-        VirtCommand::Ingest { trace } => {
-            let db = base_virt::ingest_ndjson_path(trace, "specter_live")?;
+        VirtCommand::Ingest { trace, format } => {
+            let fmt: base_virt::TraceFormat = format
+                .parse()
+                .map_err(|e: String| anyhow::anyhow!(e))?;
+            let db = base_virt::ingest_path_with_format(trace, fmt)?;
             fs::write(output.join("evidence_db.yaml"), db.to_yaml()?)?;
             let summary = serde_json::json!({
                 "phase": "virt_ingest",
+                "format": fmt.as_str(),
                 "entries": db.count(),
                 "unique_mmio": db.unique_mmio_addresses().len(),
                 "generates_os": false,
@@ -1653,7 +1657,7 @@ fn handle_virt(action: &VirtCommand, output: &Path) -> Result<()> {
                 output.join("ingest_summary.json"),
                 serde_json::to_string_pretty(&summary)?,
             )?;
-            tracing::info!("Ingested {} evidence entries", db.count());
+            tracing::info!("Ingested {} evidence entries (format={})", db.count(), fmt.as_str());
         }
         VirtCommand::Score {
             spec,

@@ -377,10 +377,14 @@ pub enum PaleoCommand {
 /// ≠ OS turnkey: generates_os=false · auto_fix_complete=false — VM live ≠ SO completo
 #[derive(Subcommand)]
 pub enum VirtCommand {
-    /// Ingest NDJSON MMIO/IRQ → EvidenceDb YAML
+    /// Ingest trace → EvidenceDb YAML (ndjson | mame | libretro | auto)
     Ingest {
-        /// NDJSON trace (plugin / device / synthetic)
+        /// Trace file
         trace: PathBuf,
+
+        /// Format: ndjson | mame | libretro | auto
+        #[arg(long, default_value = "auto")]
+        format: String,
     },
 
     /// Score EvidenceDb against HardwareSpec (single Ψ report + optional windows)

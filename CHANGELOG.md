@@ -1,6 +1,20 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`.
+
+## [v1.2.0-rc] — 2026-07-16
+
+Path to v1.2 B0–B5 (**docs**): SOW Industrial Gate + mapa PaleoComputação → B.A.S.E.
+Sem mudança obrigatória de código forense; gates `run.sh` / `run_study.sh` intactos.
+
+### Added
+- B1: [[base-vault/22 - Path to v1.2/22.30 - SOW Industrial Gate|SOW Industrial Gate]] — pré-condições HIL lab / PCB eng. / auto-fix parcial
+- B2: mapa Paleo (fósseis, Ψ, falsificação) → ética B.A.S.E. (PDF software ≠ wedge)
+- B3–B4: SOW/playbook v1.2 + COMMERCIAL/README
+- B5: tag `v1.2.0-rc`
+
+### Not
+- Implementação PCB fabricável / HIL production / auto-fix (só o *gate* para quando)
 
 ## [v1.1.0-rc] — 2026-07-16
 

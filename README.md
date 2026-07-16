@@ -9,13 +9,13 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **Tag [`v1.1.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.1.0-rc)** · estável anterior [`v1.0.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.0.0) · [CHANGELOG](CHANGELOG.md) · [Path to v1.1](base-vault/21%20-%20Path%20to%20v1.1/21.00%20-%20Index.md)
+> **Tag [`v1.2.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0-rc)** (docs: Industrial Gate) · código forense [`v1.1.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.1.0-rc) · estável [`v1.0.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.0.0) · [CHANGELOG](CHANGELOG.md) · [Path to v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.00%20-%20Index.md)
 >
-> Specter VM (Forth-like + Lua) + maturidade **REAL\*** (reconstruct / pcb-draft / evolve / hil-host / fw-host) + wedges RP/STM32 + goldens `diff`.
+> Specter VM + maturidade REAL\* + **[SOW Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md)** (quando promover HIL lab / PCB eng. / fix parcial).
 >
-> Demo: [Playbook v1.1](base-vault/21%20-%20Path%20to%20v1.1/21.20%20-%20Forensic%20Playbook.md) · `./examples/pilot/run.sh` · `./examples/pilot_study/run_study.sh`.
+> Demo: [Playbook v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.20%20-%20Forensic%20Playbook.md) · `./examples/pilot/run.sh` · `./examples/pilot_study/run_study.sh`.
 >
-> **Não** é PCB fabricável, ASIC drop-in, SaaS turnkey, HIL production nem auto-fix.
+> **Não** é PCB fabricável, ASIC drop-in, SaaS turnkey, HIL production nem auto-fix — salvo Gate verde + SOW.
 
 ---
 
@@ -157,8 +157,9 @@ PCB fabricável · ASIC drop-in · HIL production · SaaS turnkey · auto-fix co
 
 | Doc | Papel |
 |-----|-------|
+| [SOW Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md) | Quando promover PCB/HIL/fix |
 | [Maturity Matrix](base-vault/12%20-%20Path%20to%20Real/12.02%20-%20Maturity%20Matrix.md) | Fonte da verdade |
-| [Playbook v1.1](base-vault/21%20-%20Path%20to%20v1.1/21.20%20-%20Forensic%20Playbook.md) | Demo |
+| [Playbook v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.20%20-%20Forensic%20Playbook.md) | Demo + gate |
 | [Specter VM Spec](base-vault/21%20-%20Path%20to%20v1.1/21.30%20-%20Specter%20VM%20Spec.md) | Palavras + Lua |
 | [CHANGELOG](CHANGELOG.md) | Tags |
 

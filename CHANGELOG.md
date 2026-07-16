@@ -6,6 +6,7 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ### Added
 - Z1: goldens SPI STM32 — `expected_spi/` event-graph + prove; `run_w1_spi.sh` `diff`; teste `pilot_stm32_spi_goldens`
+- Z2: dual STM32 USART1 + TIM2 @ `0x40000000` — `run_z2_tim.sh`, classify `timer`/`tim`, teste `pilot_stm32_tim`
 
 ## [v0.9.0] — 2026-07-16
 

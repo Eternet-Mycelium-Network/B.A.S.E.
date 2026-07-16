@@ -27,6 +27,7 @@ python3 examples/pilot_stm32/gen_fw.py
 ./examples/pilot_stm32/run_w1_spi.sh   # USART + SPI2 (W1; não substitui run.sh)
 ./examples/pilot_stm32/run_x3_i2c.sh   # USART + I2C1 (X3; não substitui run.sh)
 ./examples/pilot_stm32/run_y3_triple.sh # USART + SPI2 + I2C1 (Y3; não substitui os acima)
+./examples/pilot_stm32/run_z2_tim.sh   # USART + TIM2 (Z2; não substitui os acima)
 ```
 
 Smoke inclui:
@@ -83,6 +84,15 @@ Smoke inclui:
 | Smoke | `run_y3_triple.sh` |
 | PCB | PA9/10 + PB13/14/15 + PB6/7 (`NOT FABRICABLE`) |
 
+## Z2 — dual USART + TIM2
+
+| Campo | Valor |
+|-------|-------|
+| TIM2 | `0x40000000` → page `0x40000000` |
+| Classify | `0x40013000=uart,0x40000000=timer` |
+| IRQ TIM2 | `0x1c` (28) |
+| Smoke | `run_z2_tim.sh` |
+
 ## Arquivos
 
 | Arquivo | Papel |
@@ -93,6 +103,7 @@ Smoke inclui:
 | `mmio_usart_spi.json` | Dual USART+SPI2 (W1) |
 | `mmio_usart_i2c.json` | Dual USART+I2C1 (X3) |
 | `mmio_usart_spi_i2c.json` | Triple USART+SPI2+I2C1 (Y3) |
+| `mmio_usart_tim.json` | Dual USART+TIM2 (Z2) |
 | `contracts.yaml` / `trace.csv` | Prove + replay USART |
 | `contracts_spi.yaml` / `trace_spi.csv` | Prove + replay SPI2 |
 | `contracts_i2c.yaml` / `trace_i2c.csv` | Prove + replay I2C1 |
@@ -100,9 +111,10 @@ Smoke inclui:
 | `expected/` | Goldens W2 USART (verificados, não sobrescritos) |
 | `expected_i2c/` | Goldens Y2 I2C1 (verificados, não sobrescritos) |
 | `expected_spi/` | Goldens Z1 SPI2 (verificados, não sobrescritos) |
-| `SHA256SUMS` / `SHA256SUMS.w1` / `SHA256SUMS.x3` / `SHA256SUMS.y3` | Integridade |
+| `SHA256SUMS` / `SHA256SUMS.w1` / `SHA256SUMS.x3` / `SHA256SUMS.y3` / `SHA256SUMS.z2` | Integridade |
 | `run.sh` | Smoke USART opt-in + goldens |
 | `run_w1_spi.sh` | Smoke dual W1 opt-in |
 | `run_x3_i2c.sh` | Smoke dual X3 opt-in |
 | `run_y3_triple.sh` | Smoke triple Y3 opt-in |
+| `run_z2_tim.sh` | Smoke dual Z2 TIM opt-in |
 | `out/` / `out_w1_spi/` / `out_x3_i2c/` / `out_y3_triple/` | Gerado (gitignored) |

@@ -74,6 +74,7 @@ pub fn extract_constraints(block: &FunctionalBlock, spec: &HardwareSpec) -> Cons
         crate::spec::types::BlockKind::Uart => Some("uart".into()),
         crate::spec::types::BlockKind::Spi => Some("spi".into()),
         crate::spec::types::BlockKind::I2c => Some("i2c".into()),
+        crate::spec::types::BlockKind::Timer => Some("timer".into()),
         crate::spec::types::BlockKind::Usb => Some("usb".into()),
         crate::spec::types::BlockKind::Dma => Some("dma".into()),
         _ => None,

@@ -296,6 +296,7 @@ fn parse_block_kind_name(kind: &str) -> Option<BlockKind> {
         "uart" => BlockKind::Uart,
         "spi" => BlockKind::Spi,
         "i2c" => BlockKind::I2c,
+        "timer" | "tim" => BlockKind::Timer,
         "ethernet" => BlockKind::Ethernet,
         _ => return None,
     })
@@ -1262,6 +1263,15 @@ mod classify_tests {
         let map = parse_classify_address_map("0x40034000=uart,0x4003c000=spi").unwrap();
         assert_eq!(map.get(&0x40034000), Some(&BlockKind::Uart));
         assert_eq!(map.get(&0x4003c000), Some(&BlockKind::Spi));
+    }
+
+    #[test]
+    fn classify_map_parses_timer_alias() {
+        let map = parse_classify_address_map("0x40000000=timer,0x40013000=uart").unwrap();
+        assert_eq!(map.get(&0x40000000), Some(&BlockKind::Timer));
+        assert_eq!(map.get(&0x40013000), Some(&BlockKind::Uart));
+        let map_tim = parse_classify_address_map("0x40000000=tim").unwrap();
+        assert_eq!(map_tim.get(&0x40000000), Some(&BlockKind::Timer));
     }
 
     #[test]

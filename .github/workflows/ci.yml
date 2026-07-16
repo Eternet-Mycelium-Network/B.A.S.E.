@@ -88,6 +88,13 @@ jobs:
           ./examples/pilot_stm32/run_y3_triple.sh
           test -f examples/pilot_stm32/out_y3_triple/CASE_SUMMARY_Y3.md
 
+      - name: Pilot Z2 STM32 (USART+TIM2 opt-in)
+        timeout-minutes: 10
+        run: |
+          chmod +x examples/pilot_stm32/run_z2_tim.sh
+          ./examples/pilot_stm32/run_z2_tim.sh
+          test -f examples/pilot_stm32/out_z2_tim/CASE_SUMMARY_Z2.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

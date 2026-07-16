@@ -20,6 +20,7 @@ features:
     adc: 2
 # V2 — pin subset USART1 default AF (LQFP-48 Blue Pill): PA9 TX / PA10 RX.
 # X1 — SPI2 default AF: PB13 SCK / PB14 MISO / PB15 MOSI (+ PB12 NSS).
+# Y1 — I2C1 default AF: PB6 SCL / PB7 SDA.
 # Full package omitted; draft sch only — NOT FABRICABLE.
 pins:
   - number: 10
@@ -52,6 +53,12 @@ pins:
   - number: 31
     name: PA10
     functions: [gpio, usart1_rx, uart0_rx]
+  - number: 42
+    name: PB6
+    functions: [gpio, i2c1_scl, i2c_scl]
+  - number: 43
+    name: PB7
+    functions: [gpio, i2c1_sda, i2c_sda]
 availability:
   status: "production"
   price_1k: 2.00

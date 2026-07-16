@@ -256,6 +256,10 @@ fn pin_func_matches_interface(func: &str, iface: &str) -> bool {
                     || f.contains("_miso")
                     || f.contains("_nss"))
         }
+        "i2c" => {
+            // STM32: i2cN_scl/sda (+ bare i2c_scl/sda aliases)
+            f.contains("i2c") && (f.contains("_scl") || f.contains("_sda"))
+        }
         _ => false,
     }
 }
@@ -560,6 +564,43 @@ mod tests {
         assert!(
             sch.contains("spi2_mosi") || sch.contains("spi2_tx"),
             "SPI2 MOSI label"
+        );
+    }
+
+    #[test]
+    fn test_schematic_stm32_i2c1_pin_annotations() {
+        let mut db = base_core::component_db::ComponentDb::new();
+        let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../base-core/component_db");
+        assert!(db.load_directory(&dir).unwrap() > 0);
+
+        let gen = SchematicGenerator::new(Some(db));
+        let spec = SynthesizedSpec {
+            original: HardwareSpec::empty(),
+            assignments: vec![ComponentAssignment {
+                block_id: "i2c_0".into(),
+                component: "STM32F103C8".into(),
+                interface: "i2c".into(),
+                config: serde_json::json!({}),
+            }],
+            netlist: None,
+            constraints: SynthesisConstraints {
+                max_bom_cost: None,
+                preferred_manufacturer: None,
+                preferred_package: None,
+            },
+        };
+        let sch = gen.generate(&spec);
+        assert!(sch.contains("NOT FABRICABLE"));
+        assert!(sch.contains("PB6"), "I2C1 SCL pad");
+        assert!(sch.contains("PB7"), "I2C1 SDA pad");
+        assert!(
+            sch.contains("i2c1_scl") || sch.contains("i2c_scl"),
+            "I2C1 SCL label"
+        );
+        assert!(
+            sch.contains("i2c1_sda") || sch.contains("i2c_sda"),
+            "I2C1 SDA label"
         );
     }
 }

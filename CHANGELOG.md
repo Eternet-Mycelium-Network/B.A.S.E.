@@ -2,6 +2,11 @@
 
 Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`.
 
+## [Unreleased] — Path to v0.9
+
+### Added
+- Y1: pins I2C1 STM32F103C8 (PB6 SCL / PB7 SDA) + labels no draft sch; matcher `scl`/`sda`
+
 ## [v0.8.0] — 2026-07-16
 
 Promoção de `v0.8.0-rc` após smoke local verde (`run.sh`, `run_t1_b2.sh`, `pilot_stm32/run.sh`, `run_w1_spi.sh`, `run_x3_i2c.sh`).

@@ -121,3 +121,20 @@ fn stm32f103_pins_declare_spi2() {
         "PB15 must carry SPI2 MOSI"
     );
 }
+
+#[test]
+fn stm32f103_pins_declare_i2c1() {
+    let db = load_db();
+    let entry = db.by_name("STM32F103C8").expect("STM32F103C8 in DB");
+    let pins = entry.pins.as_ref().expect("Y1 pins on STM32F103C8");
+    assert!(
+        pins.iter().any(|p| p.name == "PB6"
+            && p.functions.iter().any(|f| f.contains("i2c1_scl") || f == "i2c_scl")),
+        "PB6 must carry I2C1 SCL"
+    );
+    assert!(
+        pins.iter().any(|p| p.name == "PB7"
+            && p.functions.iter().any(|f| f.contains("i2c1_sda") || f == "i2c_sda")),
+        "PB7 must carry I2C1 SDA"
+    );
+}

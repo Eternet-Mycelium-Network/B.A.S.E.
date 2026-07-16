@@ -15,6 +15,7 @@ Wedge sintético **STM32F103 USART1** @ `0x40013800` (APB2, Blue Pill–style).
 | IRQ line (trace) | `0x25` (37 decimal — USART1) |
 | W1 dual SPI | SPI2 @ `0x40003800` (APB1) — SPI1 partilha página 4K com USART1 |
 | X1 pins SPI2 | PB13 SCK / PB14 MISO / PB15 MOSI (+ PB12 NSS) no draft sch |
+| Y1 pins I2C1 | PB6 SCL / PB7 SDA no draft sch |
 
 ## Como rodar
 
@@ -58,6 +59,7 @@ Smoke inclui:
 | I2C1 | `0x40005400` → page `0x40005000` |
 | Classify | `0x40013000=uart,0x40005000=i2c` |
 | IRQ I2C1_EV | `0x1f` (31) |
+| Y1 pins I2C1 | PB6 SCL / PB7 SDA no draft sch (`NOT FABRICABLE`) |
 | Smoke | `run_x3_i2c.sh` |
 
 ## Arquivos

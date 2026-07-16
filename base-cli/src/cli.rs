@@ -296,6 +296,38 @@ pub enum Command {
         #[arg(long)]
         program: Option<PathBuf>,
     },
+
+    /// Port package: address/driver map + fossils + atlas (≠ OS rewrite)
+    Port {
+        #[command(subcommand)]
+        action: PortCommand,
+    },
+}
+
+/// `base port` — HAL/driver port assist
+#[derive(Subcommand)]
+pub enum PortCommand {
+    /// Build port package from analyze artefacts
+    Package {
+        /// HardwareSpec YAML
+        input: PathBuf,
+
+        /// Evidence DB YAML (from analyze)
+        #[arg(long)]
+        evidence: Option<PathBuf>,
+
+        /// Tension report JSON (from analyze)
+        #[arg(long)]
+        tension: Option<PathBuf>,
+
+        /// Abstract HAL target name
+        #[arg(long, default_value = "hal_abstract_v1")]
+        target_hal: String,
+
+        /// Also emit host HAL C stub via base-fw (optional)
+        #[arg(long, default_value_t = false)]
+        hal_stub: bool,
+    },
 }
 
 /// `base hil` subcommands — thin wrapper over `base-hil`.

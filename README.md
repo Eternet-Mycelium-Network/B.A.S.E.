@@ -34,6 +34,7 @@ Fonte da verdade: [**Maturity Matrix**](base-vault/12%20-%20Path%20to%20Real/12.
 | `fw` | **REAL\*** host (`make host`); ≠ silício |
 | `pcb` | **REAL\*** draft KiCad (`NOT FABRICABLE`) |
 | `hil` | **REAL\*** host + **Gate A** `lab-status`; production gated |
+| `port package` | **EXPERIMENTAL** — mapa/fósseis/atlas; ≠ OS rewrite |
 
 ### Wedges / smokes
 

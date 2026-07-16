@@ -23,6 +23,7 @@ base-bir = { path = "../base-bir" }
 base-bsl = { path = "../base-bsl" }
 base-hil = { path = "../base-hil" }
 base-vm = { path = "../base-vm" }
+base-port = { path = "../base-port" }
 
 [features]
 default = []

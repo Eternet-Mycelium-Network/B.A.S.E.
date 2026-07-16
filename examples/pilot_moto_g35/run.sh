@@ -72,13 +72,28 @@ PY
   fi
 fi
 
+echo "== port package (addr map + fossils + atlas) =="
+"$BASE" port package "$OUT/analyze/hardware_spec.yaml" \
+  --evidence "$OUT/analyze/evidence_db.yaml" \
+  --tension "$OUT/analyze/tension_report.json" \
+  --target-hal "hal_tauros_aarch64" \
+  --hal-stub \
+  -o "$OUT/port_package"
+test -f "$OUT/port_package/PORT_PACKAGE.md"
+test -f "$OUT/port_package/address_driver_map.yaml"
+test -f "$OUT/port_package/fossil_inventory.yaml"
+test -f "$OUT/port_package/hal_mmio_stub.c"
+grep -q 'generates_os: false' "$OUT/port_package/port_package.yaml" \
+  || grep -q 'generates_os: false' "$OUT/port_package/PORT_PACKAGE.md"
+
 cp "$PILOT/manifest.yaml" "$OUT/manifest.yaml"
 cat > "$OUT/CASE_SUMMARY_G35_A.md" <<EOF
 # Moto G35 OS-port assist — fase A
 
 - fixture: ANDROID! boot.img (synth Unisoc UART 0xA9000000)
 - hardware_spec + prove + reconstruct OK
-- auto_fix_complete=false
+- port_package: address map + fossils + HAL stub
+- auto_fix_complete=false · generates_os=false
 - ≠ TaurOS complete / ≠ production
 - status: OK
 EOF

@@ -53,15 +53,26 @@ assert r.get("auto_fix_complete") is False
 print("reconstruct OK", r["stop_reason"])
 PY
 
+echo "== port package (OF/MacIO map + fossils) =="
+"$BASE" port package "$OUT/analyze/hardware_spec.yaml" \
+  --evidence "$OUT/analyze/evidence_db.yaml" \
+  --tension "$OUT/analyze/tension_report.json" \
+  --target-hal "hal_reactos_ppc_assist" \
+  --hal-stub \
+  -o "$OUT/port_package"
+test -f "$OUT/port_package/PORT_PACKAGE.md"
+test -f "$OUT/port_package/address_driver_map.yaml"
+
 cp "$PILOT/manifest.yaml" "$OUT/manifest.yaml"
 cp "$PILOT/REACTOS_EXTERNAL.md" "$OUT/REACTOS_EXTERNAL.md"
 cat > "$OUT/CASE_SUMMARY_IMAC_A.md" <<EOF
 # iMac G3 OS-port assist — fase A
 
 - MacIO/OF contracts @ 0x80000000 (synth)
+- port_package atlas (map + fossils)
 - Capstone PPC: not in v1.4
 - ReactOS: external only
-- auto_fix_complete=false
+- auto_fix_complete=false · generates_os=false
 - status: OK
 EOF
 

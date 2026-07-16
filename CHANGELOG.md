@@ -4,6 +4,11 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ## [Unreleased]
 
+### Added
+- Crate `base-port` + CLI `base port package` — address/driver map, fossil inventory, `PORT_PACKAGE.md`, optional `hal_mmio_stub.c`
+- Pilots G35/iMac emitem `out/port_package/` após fase A
+- Vault [[24.40 - Port Package]]
+
 ## [v1.4.0-rc] — 2026-07-16
 
 Path to v1.4: **OS Port Validation Assist** (forense → QEMU → hardware).

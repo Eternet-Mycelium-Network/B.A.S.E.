@@ -28,7 +28,7 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
-use crate::cli::{Command, HilCommand};
+use crate::cli::{Command, HilCommand, PortCommand};
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
     match cmd {
@@ -136,6 +136,9 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         }
         Command::Study { input, policy, program } => {
             handle_study(input, policy.as_deref(), program.as_deref(), output)?;
+        }
+        Command::Port { action } => {
+            handle_port(action, output)?;
         }
     }
     Ok(())
@@ -1328,6 +1331,79 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                     report.sow_path_hint
                 );
             }
+        }
+    }
+    Ok(())
+}
+
+fn handle_port(action: &PortCommand, output: &Path) -> Result<()> {
+    match action {
+        PortCommand::Package {
+            input,
+            evidence,
+            tension,
+            target_hal,
+            hal_stub,
+        } => {
+            tracing::info!(
+                "[PORT] package assist — ≠ OS rewrite; target_hal={}",
+                target_hal
+            );
+            let yaml = fs::read_to_string(input)?;
+            let spec = HardwareSpec::from_yaml(&yaml)?;
+            let evidence_db = match evidence {
+                Some(p) => {
+                    let t = fs::read_to_string(p)?;
+                    Some(base_core::evidence::EvidenceDb::from_yaml(&t)?)
+                }
+                None => None,
+            };
+            let tension_report = match tension {
+                Some(p) => {
+                    let t = fs::read_to_string(p)?;
+                    Some(serde_json::from_str::<base_core::tension::TensionReport>(&t)?)
+                }
+                None => None,
+            };
+            let mut opts = base_port::PortPackageOptions::new(target_hal.clone());
+            opts.target_arch_note =
+                "abstract HAL — bind concrete ISA in SOW; fossils = do-not-invent".into();
+            let pkg = base_port::build_port_package(
+                &spec,
+                evidence_db.as_ref(),
+                tension_report.as_ref(),
+                opts,
+            );
+            fs::create_dir_all(output)?;
+            fs::write(output.join("port_package.yaml"), pkg.to_yaml()?)?;
+            fs::write(output.join("address_driver_map.yaml"), pkg.map_yaml()?)?;
+            fs::write(output.join("fossil_inventory.yaml"), pkg.fossils_yaml()?)?;
+            fs::write(output.join("PORT_PACKAGE.md"), pkg.to_markdown())?;
+            tracing::info!(
+                "[PORT] wrap={} rewrite={} fossils={} → {}",
+                pkg.rewrite_avoidance.wrap_candidates,
+                pkg.rewrite_avoidance.must_rewrite,
+                pkg.fossil_inventory.fossils.len(),
+                output.display()
+            );
+            if *hal_stub {
+                let synth = SynthesizedSpec {
+                    original: spec.clone(),
+                    assignments: vec![],
+                    netlist: None,
+                    constraints: SynthesisConstraints {
+                        max_bom_cost: None,
+                        preferred_manufacturer: None,
+                        preferred_package: None,
+                    },
+                };
+                let gen = HalGenerator;
+                let c = gen.generate(&synth, target_hal);
+                fs::write(output.join("hal_mmio_stub.c"), c)?;
+                tracing::info!("[PORT] wrote hal_mmio_stub.c (HOST_BUILD shadow regs)");
+            }
+            assert!(!pkg.generates_os);
+            assert!(!pkg.auto_fix_complete);
         }
     }
     Ok(())

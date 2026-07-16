@@ -2,12 +2,13 @@
 
 > [README.md](README.md) · [LICENSE.md](LICENSE.md) · **Estratégia Comercial**
 >
-> **Nota v0.6 (Path):** oferta **forense** com Capstone UART/SPI (RP) + STM32 USART1
-> (Capstone sintético + pins PA9/PA10 + draft sch), Z3 opcional,
-> HIL EXPERIMENTAL (`base hil` / `hil_usb` / `hil_programmer` — ≠ production).
-> Port industrial = **consultoria + [SOW v0.6](base-vault/16%20-%20Path%20to%20v0.6/16.21%20-%20SOW%20Industrial%20Checklist.md)**.
-> Playbook: [Forensic Playbook v0.6](base-vault/16%20-%20Path%20to%20v0.6/16.20%20-%20Forensic%20Playbook.md) · [CHANGELOG](CHANGELOG.md).
-> Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” / “HIL production” continuam arquivados.
+> **Nota v0.7 (Path):** oferta **forense** com Capstone UART/SPI (RP) + STM32 USART1
+> (Capstone sintético + pins + goldens) + **SPI2 dual opt-in**, reconstruct com
+> estagnação honesta (`stop_reason`; ≠ auto-fix),
+> HIL EXPERIMENTAL (`base hil` — ≠ production).
+> Port industrial = **consultoria + [SOW v0.7](base-vault/17%20-%20Path%20to%20v0.7/17.21%20-%20SOW%20Industrial%20Checklist.md)**.
+> Playbook: [Forensic Playbook v0.7](base-vault/17%20-%20Path%20to%20v0.7/17.20%20-%20Forensic%20Playbook.md) · [CHANGELOG](CHANGELOG.md).
+> Claims “PCB drop-in” / “ASIC substituído” / “SaaS turnkey” / “HIL production” / “auto-fix completa” continuam arquivados.
 
 > Licença: AGPLv3 — uso comercial permitido; modificações em serviço de rede devem ser compartilhadas.
 > Uso proprietário fechado: licença comercial (consultar).
@@ -36,17 +37,21 @@ Analisar firmware embedded sem código-fonte: IoT, roteadores, sensores.
 ./examples/pilot/run.sh
 ./examples/pilot/run_t1_b2.sh
 ./examples/pilot_stm32/run.sh
+./examples/pilot_stm32/run_w1_spi.sh
+base reconstruct examples/pilot_stm32/out/analyze/hardware_spec.yaml \
+  --continuous --threshold 0.99 -o /tmp/recon/
 base hil enumerate -o /tmp/hil/
 base hil flash /tmp/x.bin --mock-flash -o /tmp/hil/
 ```
 
-Demo: [Playbook v0.6](base-vault/16%20-%20Path%20to%20v0.6/16.20%20-%20Forensic%20Playbook.md) ·
+Demo: [Playbook v0.7](base-vault/17%20-%20Path%20to%20v0.7/17.20%20-%20Forensic%20Playbook.md) ·
 [Case study](base-vault/12%20-%20Path%20to%20Real/12.20%20-%20Pilot%20Case%20Study.md).
 
 ### Não inclui (ainda)
 - Prova criminal “pronta para tribunal” sem revisão humana
 - Z3 formal em todas as builds
 - Flash HIL automático / “production”
+- Auto-fix completa via `reconstruct --continuous`
 - Substituição do gate RP pelo STM32
 
 ### Precificação orientativa
@@ -63,9 +68,9 @@ Demo: [Playbook v0.6](base-vault/16%20-%20Path%20to%20v0.6/16.20%20-%20Forensic%
 ASICs / MCUs legados sem reposição.
 
 ### Posicionamento honesto
-B.A.S.E. **acelera** diagnóstico e Reference Design (RP e/ou STM32). Port completo é **projeto de engenharia** com humanos no loop.
+B.A.S.E. **acelera** diagnóstico e Reference Design (RP e/ou STM32 multi-peripheral). Port completo é **projeto de engenharia** com humanos no loop.
 
-Use o [SOW Industrial Checklist v0.6](base-vault/16%20-%20Path%20to%20v0.6/16.21%20-%20SOW%20Industrial%20Checklist.md).
+Use o [SOW Industrial Checklist v0.7](base-vault/17%20-%20Path%20to%20v0.7/17.21%20-%20SOW%20Industrial%20Checklist.md).
 
 ```bash
 base analyze firmware.bin --mmio-traces mmio.json --classify uart -o study/
@@ -98,7 +103,7 @@ Pipeline visual (DOT/Mermaid), contratos, métrica Ψ — ver [examples/pilot](e
 ## Mercado 4 — SaaS (**adiado**)
 
 Playbook existe; SaaS permanece adiado.
-Não vender “PCB + firmware prontos” nem HIL “plug-and-flash”.
+Não vender “PCB + firmware prontos” nem HIL “plug-and-flash” nem “auto-fix”.
 
 ---
 
@@ -109,13 +114,14 @@ Não vender “PCB + firmware prontos” nem HIL “plug-and-flash”.
 | GitHub / vault Obsidian | Transparência técnica |
 | Eventos de segurança | Demo forense (RP + STM32) |
 | Parcerias acadêmicas | Ψ + paleocomputação |
-| Cases G5 / Xbox / Alpha | Pesquisa — **não** claim de produto |
+| Cases G5 / Xbox / Alpha / Amiga | Pesquisa — **não** claim de produto |
 
 ---
 
 ## Próximo passo imediato
 
-1. ✅ Path to Real → v0.5 (`v0.5.0`)
-2. ✅ Path to v0.6 V0–V4 (Capstone/pins/`base hil` + oferta)
-3. Demo: `run.sh` + `pilot_stm32` + `base hil enumerate`
-4. Pricing SaaS / port turnkey só com SOW
+1. ✅ Path to Real → v0.6 (`v0.6.0`)
+2. ✅ Path to v0.7 W0–W4 (SPI2 + goldens + reconstruct honesty + oferta)
+3. Demo: `run.sh` + `pilot_stm32` + `run_w1_spi.sh` + `base hil enumerate`
+4. Release `v0.7.0-rc` (W5)
+5. Pricing SaaS / port turnkey só com SOW

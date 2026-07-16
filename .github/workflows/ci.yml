@@ -109,6 +109,20 @@ jobs:
           ./examples/hil_lab/run_hil_lab.sh
           test -f examples/hil_lab/out/CASE_SUMMARY_HIL_LAB.md
 
+      - name: OS-port assist G35 fase A (opt-in)
+        timeout-minutes: 5
+        run: |
+          chmod +x examples/pilot_moto_g35/run.sh
+          ./examples/pilot_moto_g35/run.sh
+          test -f examples/pilot_moto_g35/out/CASE_SUMMARY_G35_A.md
+
+      - name: OS-port assist iMac G3 fase A (opt-in)
+        timeout-minutes: 5
+        run: |
+          chmod +x examples/pilot_imac_g3/run.sh
+          ./examples/pilot_imac_g3/run.sh
+          test -f examples/pilot_imac_g3/out/CASE_SUMMARY_IMAC_A.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

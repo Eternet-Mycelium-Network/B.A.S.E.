@@ -9,13 +9,13 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **Tag [`v1.3.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.3.0-rc)** · docs Gate [`v1.2.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0) · forense [`v1.1.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.1.0-rc) · [CHANGELOG](CHANGELOG.md)
+> **Tag [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc)** · HIL [`v1.3.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.3.0-rc) · Gate [`v1.2.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0) · [CHANGELOG](CHANGELOG.md)
 >
-> Specter VM + **[Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md)** + **[HIL Lab Gate A](base-vault/23%20-%20Path%20to%20v1.3/23.30%20-%20HIL%20Lab%20Gate.md)** (`base hil lab-status`).
+> Specter + Industrial Gate + HIL Lab + **[OS Port Validation Assist](base-vault/24%20-%20Path%20to%20v1.4/24.00%20-%20Index.md)** (G35 / iMac G3).
 >
-> Demo: `./examples/pilot/run.sh` · `./examples/pilot_study/run_study.sh` · `./examples/hil_lab/run_hil_lab.sh`.
+> Demo: `./examples/pilot/run.sh` · `./examples/pilot_moto_g35/run.sh` · `./examples/pilot_imac_g3/run.sh`.
 >
-> **Não** é PCB fabricável, HIL production turnkey nem auto-fix.
+> **Não** é port ReactOS/TaurOS turnkey, PCB fabricável nem HIL production.
 
 ---
 
@@ -42,8 +42,10 @@ Fonte da verdade: [**Maturity Matrix**](base-vault/12%20-%20Path%20to%20Real/12.
 | RP UART / SPI | `run.sh` / `run_t1_b2.sh` |
 | STM32 USART/SPI/I2C/TIM/triple | `pilot_stm32/run*.sh` |
 | Specter study | `examples/pilot_study/run_study.sh` |
+| Moto G35 OS-port A | `examples/pilot_moto_g35/run.sh` |
+| iMac G3 OS-port A | `examples/pilot_imac_g3/run.sh` |
 
-Docs: [Path to v1.1](base-vault/21%20-%20Path%20to%20v1.1/21.00%20-%20Index.md) · [Specter VM Spec](base-vault/21%20-%20Path%20to%20v1.1/21.30%20-%20Specter%20VM%20Spec.md)
+Docs: [Path to v1.4](base-vault/24%20-%20Path%20to%20v1.4/24.00%20-%20Index.md) · [Path to v1.1](base-vault/21%20-%20Path%20to%20v1.1/21.00%20-%20Index.md)
 
 ---
 

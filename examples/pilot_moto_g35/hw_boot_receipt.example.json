@@ -1,0 +1,13 @@
+{
+  "phase": "C",
+  "device": "moto_g35_5g",
+  "operator": "_______________",
+  "date": "YYYY-MM-DD",
+  "image_sha256": "_______________",
+  "method": "fastboot|edl|other",
+  "result": "boot_ok|panic|hang|not_run",
+  "console_log_path": null,
+  "sow_signed": false,
+  "production": false,
+  "note": "lab receipt only — ≠ SaaS turnkey"
+}

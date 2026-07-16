@@ -1,0 +1,17 @@
+# Manifest — iMac G3 late 2001 OS-port validation assist
+
+target:
+  device: imac_g3_late_2001
+  cpu: powerpc_g3_750
+  firmware: OpenFirmware
+  port_os: ReactOS  # externo; PPC port retired upstream
+
+phases:
+  A: forense_of_macio   # run.sh
+  B: qemu_ppc_smoke     # esqueleto — precisa qemu-system-ppc + image externa
+  C: hardware_boot      # SOP.md
+
+honesty:
+  capstone_ppc: false   # path futuro
+  generates_reactos: false
+  production: false

@@ -1,19 +1,23 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`.
 
 ## [Unreleased]
 
-### Added (Path to v1.3 C5 — live sem mock)
-- Feature `hil_live` (`hil_usb` + `hil_programmer`) + catálogo USB (ST-Link/DAPLink/Pico/J-Link)
-- CLI `--live` / `--auto-probe` em `lab-status` e `flash` (recusa mock)
-- Receipt `lab_assist` via `BASE_HIL_LAB_ASSIST` / `--live` — **nunca** `mode=production`
-- Smoke opt-in `examples/hil_lab/run_hil_lab_live.sh` + `probes.env.example`
+## [v1.4.0-rc] — 2026-07-16
 
-### Added (Path to v1.3 C4)
-- Fechar Gate A1/A2 em lab rehearsal: `lab-status --mock-detected` + `--features hil_programmer` + envs
-- Smoke `examples/hil_lab/run_hil_lab_assist.sh` → A1/A2 GREEN, A5 aberto, `experimental_external_cmd`
-- Ainda ≠ production / USB real obrigatório / `lab_assist_ready` sem SOW
+Path to v1.4: **OS Port Validation Assist** (forense → QEMU → hardware).
+≠ port ReactOS/TaurOS automático turnkey.
+
+### Added
+- Vault `base-vault/24 - Path to v1.4/` (Gate A/B/C + SOW + playbook)
+- Pilot Moto G35: `examples/pilot_moto_g35/` fase A (`run.sh`) + B (`run_qemu_smoke.sh`) + C SOP
+- Pilot iMac G3: `examples/pilot_imac_g3/` fase A + QEMU esqueleto + `REACTOS_EXTERNAL.md`
+- Use case [[06.04 iMac G3 late 2001]]
+- CI opt-in smokes G35/iMac fase A
+
+### Not
+- Capstone PowerPC · ReactOS/TaurOS build in-tree · claim “port validado de vez” sem A+B+C+SOW
 
 ## [v1.3.0-rc] — 2026-07-16
 

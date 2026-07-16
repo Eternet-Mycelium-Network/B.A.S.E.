@@ -312,7 +312,7 @@ pub enum HilCommand {
         pid: String,
     },
 
-    /// Attempt flash / dry-run — **never** production; gates match `base-hil`
+    /// Attempt flash — **never** `mode=production`; use `--live` for USB+CMD (no mock)
     Flash {
         /// Firmware image to flash (or dry-run)
         image: PathBuf,
@@ -323,13 +323,21 @@ pub enum HilCommand {
         #[arg(long, default_value = "0x4007")]
         pid: String,
 
-        /// Force ProbePresence::Detected offline (like BASE_HIL_MOCK_DETECTED)
+        /// Force ProbePresence::Detected offline (rehearsal; refused with `--live`)
         #[arg(long)]
         mock_detected: bool,
 
-        /// Dry-run receipt (`mock_dry_run`) — no silicon
+        /// Dry-run receipt (`mock_dry_run`) — no silicon (refused with `--live`)
         #[arg(long)]
         mock_flash: bool,
+
+        /// USB+programmer only — no mock; implies auto-probe; sets lab_assist receipt if SOW envs
+        #[arg(long, default_value_t = false)]
+        live: bool,
+
+        /// Scan known USB probes / BASE_HIL_PROBE_IDS (implied by `--live`)
+        #[arg(long, default_value_t = false)]
+        auto_probe: bool,
     },
 
     /// Industrial Gate A — report HIL lab pré-condições (never production)
@@ -344,9 +352,17 @@ pub enum HilCommand {
         #[arg(long)]
         sop: Option<PathBuf>,
 
-        /// Force A1 Detected offline (lab rehearsal; ≠ USB real)
+        /// Force A1 Detected offline (rehearsal; refused with `--live`)
         #[arg(long, default_value_t = false)]
         mock_detected: bool,
+
+        /// USB-only Gate A (no mock); auto-probe on
+        #[arg(long, default_value_t = false)]
+        live: bool,
+
+        /// Scan known probes (implied by `--live`)
+        #[arg(long, default_value_t = false)]
+        auto_probe: bool,
 
         /// Operator asserts SOW §HIL signed (Gate A5) — do not lie
         #[arg(long, default_value_t = false)]

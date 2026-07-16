@@ -4,6 +4,12 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ## [Unreleased]
 
+### Added (Path to v1.3 C5 — live sem mock)
+- Feature `hil_live` (`hil_usb` + `hil_programmer`) + catálogo USB (ST-Link/DAPLink/Pico/J-Link)
+- CLI `--live` / `--auto-probe` em `lab-status` e `flash` (recusa mock)
+- Receipt `lab_assist` via `BASE_HIL_LAB_ASSIST` / `--live` — **nunca** `mode=production`
+- Smoke opt-in `examples/hil_lab/run_hil_lab_live.sh` + `probes.env.example`
+
 ### Added (Path to v1.3 C4)
 - Fechar Gate A1/A2 em lab rehearsal: `lab-status --mock-detected` + `--features hil_programmer` + envs
 - Smoke `examples/hil_lab/run_hil_lab_assist.sh` → A1/A2 GREEN, A5 aberto, `experimental_external_cmd`

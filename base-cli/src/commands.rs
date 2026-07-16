@@ -1204,11 +1204,30 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
             pid,
             mock_detected,
             mock_flash,
+            live,
+            auto_probe,
         } => {
             let vid_n = parse_usb_id(vid)?;
             let pid_n = parse_usb_id(pid)?;
+            if *live && (*mock_detected || *mock_flash) {
+                anyhow::bail!("--live refuses --mock-detected / --mock-flash (USB+CMD only)");
+            }
+            if *live && !cfg!(feature = "hil_usb") {
+                anyhow::bail!(
+                    "--live requires build with --features hil_live (or hil_usb,hil_programmer)"
+                );
+            }
+            if *live && !base_hil::programmer_feature_enabled() {
+                anyhow::bail!("--live requires --features hil_programmer (use hil_live)");
+            }
             let data = fs::read(image)?;
-            let agent = if *mock_detected || *mock_flash {
+            let auto = *auto_probe || *live;
+            let agent = if *live {
+                std::env::set_var(base_hil::ENV_REQUIRE_LIVE, "1");
+                std::env::set_var(base_hil::ENV_LAB_ASSIST, "1");
+                base_hil::HilAgent::connect_opts(vid_n, pid_n, auto, true)
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+            } else if *mock_detected || *mock_flash {
                 if *mock_flash {
                     tracing::warn!(
                         "[HIL][EXPERIMENTAL] --mock-flash → dry-run only (NO silicon)"
@@ -1221,7 +1240,7 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                     base_hil::HilAgent::with_presence(base_hil::ProbePresence::Detected)
                 }
             } else {
-                base_hil::HilAgent::connect(vid_n, pid_n)
+                base_hil::HilAgent::connect_opts(vid_n, pid_n, auto, false)
                     .map_err(|e| anyhow::anyhow!("{e}"))?
             };
 
@@ -1232,17 +1251,20 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                         "CLI must never claim production flash"
                     );
                     tracing::info!(
-                        "[HIL][EXPERIMENTAL] flash receipt mode={} bytes={}",
+                        "[HIL] flash receipt mode={} bytes={} live={}",
                         receipt.mode,
-                        receipt.bytes
+                        receipt.bytes,
+                        live
                     );
                     fs::create_dir_all(output)?;
                     let report = serde_json::json!({
-                        "experimental": true,
+                        "experimental": !*live,
+                        "lab_assist": *live || receipt.mode == "lab_assist",
                         "production": false,
                         "mode": receipt.mode,
                         "bytes": receipt.bytes,
                         "image": image.display().to_string(),
+                        "live": *live,
                     });
                     let path = output.join("hil_flash_receipt.json");
                     fs::write(&path, serde_json::to_string_pretty(&report)?)?;
@@ -1258,10 +1280,20 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
             pid,
             sop,
             mock_detected,
+            live,
+            auto_probe,
             sow_signed,
         } => {
             let vid_n = parse_usb_id(vid)?;
             let pid_n = parse_usb_id(pid)?;
+            if *live && *mock_detected {
+                anyhow::bail!("--live refuses --mock-detected (USB only)");
+            }
+            if *live && !cfg!(feature = "hil_usb") {
+                anyhow::bail!(
+                    "--live requires build with --features hil_live (or hil_usb,hil_programmer)"
+                );
+            }
             let report = base_hil::evaluate_lab_gate_opts(
                 vid_n,
                 pid_n,
@@ -1269,6 +1301,8 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                     sow_signed: *sow_signed,
                     sop_path: sop.as_deref(),
                     mock_detected: *mock_detected,
+                    live: *live,
+                    auto_probe: *auto_probe || *live,
                 },
             );
             tracing::info!(

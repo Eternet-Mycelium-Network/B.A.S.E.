@@ -1,58 +1,50 @@
 # HIL Lab SOP (Gate A3) — template
 
-> Copiar/adaptar ao lab do Cliente. **Não** é flash de produção turnkey.
+> Copiar/adaptar ao lab do Cliente. Path **live** = USB + programador, **sem mock**.  
+> Receipt `lab_assist` sob SOW — **nunca** `mode=production` / SaaS turnkey.
 
 ## 1. Operador
 
 - Nome / contato: _______________
-- Só flasheia com SOW §HIL assinado (Gate A5).
+- Só flasheia silício com SOW §HIL assinado (Gate A5 / `HIL_SOW_SIGNED=1`).
 
-## 2. Pré-checks
+## 2. Path LIVE (produção de lab — sem mock)
 
 ```bash
-# Default CI: A1/A2 BLOCK
-base hil lab-status --sop examples/hil_lab/SOP.md -o /tmp/hil_gate/
+cp examples/hil_lab/probes.env.example examples/hil_lab/probes.env
+# editar BASE_HIL_PROGRAMMER_CMD + opcional BASE_HIL_PROBE_IDS / HIL_FW_IMAGE
 
-# Lab rehearsal A1+A2 (Detected offline + programmer; A5 ainda aberto):
-cargo build -p base-cli --features hil_programmer
+cargo build -p base-cli --features hil_live
 export BASE_HIL_ALLOW_FLASH=1
-export BASE_HIL_PROGRAMMER_CMD='test -f {image}'   # ou picotool load {image}
-base hil lab-status --sop examples/hil_lab/SOP.md --mock-detected -o /tmp/hil_gate/
-# → A1/A2 GREEN; lab_assist_ready=false até --sow-signed
+export BASE_HIL_PROGRAMMER_CMD='…'   # picotool / openocd / probe-rs
+# opcional: export HIL_SOW_SIGNED=1   # só com contrato
+
+./examples/hil_lab/run_hil_lab_live.sh
+# ou:
+base hil lab-status --sop examples/hil_lab/SOP.md --live -o /tmp/hil/
+base hil flash firmware.bin --live -o /tmp/hil/
+# → mode=lab_assist · production=false
 ```
 
-**A1 real (USB):** build com `--features hil_usb,hil_programmer` + probe VID:PID — sem `--mock-detected`.
+`--live` recusa `--mock-detected` / `--mock-flash`. Catálogo USB: ST-Link, DAPLink, Pico, J-Link + `BASE_HIL_PROBE_IDS`.
 
-## 3. Dry-run (obrigatório antes de silício)
+## 3. Rehearsal offline (CI / sem probe)
 
 ```bash
-base hil flash firmware.bin --mock-flash -o /tmp/hil/
-# mode=mock_dry_run — zero silício
+./examples/hil_lab/run_hil_lab_assist.sh   # A1/A2 com mock — ≠ live
+base hil flash fw.bin --mock-flash -o /tmp/hil/   # mock_dry_run
 ```
 
-## 4. Lab-assist (só se Gate A verde)
-
-```bash
-export BASE_HIL_ALLOW_FLASH=1
-export BASE_HIL_PROGRAMMER_CMD='picotool load {image}'   # exemplo
-# build com --features hil_programmer[,hil_usb] conforme lab
-base hil flash firmware.bin --mock-detected -o /tmp/hil/   # rehearsal
-# ou sem --mock-detected se USB Detected
-# mode=experimental_external_cmd — ainda ≠ "production"
-```
-
-Smoke: `./examples/hil_lab/run_hil_lab_assist.sh`
-
-## 5. Rollback / log
+## 4. Rollback / log
 
 - Guardar `hil_flash_receipt.json` + hash do binário.
 - Se falhar: reverter imagem anterior documentada no SOW.
 
-## 6. Proibido
+## 5. Proibido
 
 - Flash no CI default  
-- Claim `production` / SaaS plug-and-flash  
-- Flash sem Detected / sem ALLOW_FLASH  
-- Passar `--sow-signed` sem contrato  
+- Claim `production: true` / `mode=production` / SaaS plug-and-flash  
+- `--live` com mock  
+- `--sow-signed` / `HIL_SOW_SIGNED=1` sem contrato  
 
 Ref: `base-vault/22 - Path to v1.2/22.30 - SOW Industrial Gate.md`

@@ -10,6 +10,9 @@ pub const ENV_ALLOW_FLASH: &str = "BASE_HIL_ALLOW_FLASH";
 /// Template do comando (ex.: `picotool load {image}`). `{image}` = path do binário temporário.
 pub const ENV_PROGRAMMER_CMD: &str = "BASE_HIL_PROGRAMMER_CMD";
 
+/// Se set + flash OK → receipt `lab_assist` (silício via CMD; **nunca** `production`).
+pub const ENV_LAB_ASSIST: &str = "BASE_HIL_LAB_ASSIST";
+
 /// Feature `hil_programmer` compilada?
 pub fn programmer_feature_enabled() -> bool {
     cfg!(feature = "hil_programmer")
@@ -73,9 +76,15 @@ pub fn try_experimental_flash(image: &[u8]) -> Result<FlashReceipt, FlashDenied>
         return Err(FlashDenied::ProgrammerFailed);
     }
 
+    let mode = if std::env::var_os(ENV_LAB_ASSIST).is_some() {
+        "lab_assist"
+    } else {
+        "experimental_external_cmd"
+    };
+    assert_ne!(mode, "production");
     Ok(FlashReceipt {
         bytes: image.len(),
-        mode: "experimental_external_cmd",
+        mode,
     })
 }
 
@@ -125,11 +134,26 @@ mod tests {
         let _g = ENV_LOCK.lock().unwrap();
         std::env::set_var(ENV_ALLOW_FLASH, "1");
         std::env::set_var(ENV_PROGRAMMER_CMD, "test -f {image}");
+        std::env::remove_var(ENV_LAB_ASSIST);
         let receipt = try_experimental_flash(&[9, 9, 9, 9]).unwrap();
         std::env::remove_var(ENV_ALLOW_FLASH);
         std::env::remove_var(ENV_PROGRAMMER_CMD);
         assert_eq!(receipt.bytes, 4);
         assert_eq!(receipt.mode, "experimental_external_cmd");
+        assert_ne!(receipt.mode, "production");
+    }
+
+    #[test]
+    fn lab_assist_mode_when_env_set() {
+        let _g = ENV_LOCK.lock().unwrap();
+        std::env::set_var(ENV_ALLOW_FLASH, "1");
+        std::env::set_var(ENV_PROGRAMMER_CMD, "test -f {image}");
+        std::env::set_var(ENV_LAB_ASSIST, "1");
+        let receipt = try_experimental_flash(&[1, 2]).unwrap();
+        std::env::remove_var(ENV_ALLOW_FLASH);
+        std::env::remove_var(ENV_PROGRAMMER_CMD);
+        std::env::remove_var(ENV_LAB_ASSIST);
+        assert_eq!(receipt.mode, "lab_assist");
         assert_ne!(receipt.mode, "production");
     }
 }

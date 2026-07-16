@@ -29,6 +29,9 @@ examples/pilot_stm32/out_z2_tim/
 examples/pilot_study/out/
 examples/hil_lab/out/
 examples/hil_lab/out_assist/
+examples/hil_lab/out_live/
+examples/hil_lab/probes.env
+
 
 # Build / IDE
 **/*.elf

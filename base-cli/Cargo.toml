@@ -29,6 +29,8 @@ default = []
 # Opt-in: forward HIL USB / programmer features (CI default stays off).
 hil_usb = ["base-hil/hil_usb"]
 hil_programmer = ["base-hil/hil_programmer"]
+# Lab silício: USB real + programador (sem mock)
+hil_live = ["hil_usb", "hil_programmer"]
 
 [[bin]]
 name = "base"

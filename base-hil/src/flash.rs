@@ -49,6 +49,6 @@ impl std::fmt::Display for FlashDenied {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlashReceipt {
     pub bytes: usize,
-    /// `mock_dry_run` | `experimental_external_cmd` — nunca `"production"`.
+    /// `mock_dry_run` | `experimental_external_cmd` | `lab_assist` — nunca `"production"`.
     pub mode: &'static str,
 }

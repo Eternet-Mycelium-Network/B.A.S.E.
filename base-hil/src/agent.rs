@@ -9,6 +9,9 @@ use crate::usb;
 /// Env: força [`ProbePresence::Detected`] sem USB (só testes/offline).
 pub const ENV_MOCK_DETECTED: &str = "BASE_HIL_MOCK_DETECTED";
 
+/// Env: lab live — ignora mock; exige USB real (`hil_usb`).
+pub const ENV_REQUIRE_LIVE: &str = "BASE_HIL_REQUIRE_LIVE";
+
 /// VID canônico do stub RP2350 (`probe.rs`).
 pub const DEFAULT_PROBE_VID: u16 = 0xCAFE;
 /// PID canônico do stub RP2350 (`probe.rs`).
@@ -40,11 +43,27 @@ pub struct HilAgent {
 }
 
 impl HilAgent {
-    /// Enumeração: mock env → USB (`hil_usb`) → Simulated.
+    /// `true` se live obrigatório (sem mock).
+    pub fn require_live() -> bool {
+        std::env::var_os(ENV_REQUIRE_LIVE).is_some()
+    }
+
+    /// Enumeração: mock env (se não live) → preferred USB → Simulated.
     ///
     /// Sem feature `hil_usb`, USB nunca é consultado (CI default).
     pub fn enumerate_presence(vid: u16, pid: u16) -> ProbePresence {
-        if std::env::var_os(ENV_MOCK_DETECTED).is_some() {
+        Self::enumerate_presence_opts(vid, pid, false, Self::require_live())
+    }
+
+    /// Como [`Self::enumerate_presence`], com `auto_probe` e `require_live` explícitos.
+    pub fn enumerate_presence_opts(
+        vid: u16,
+        pid: u16,
+        auto_probe: bool,
+        require_live: bool,
+    ) -> ProbePresence {
+        let live = require_live || Self::require_live();
+        if !live && std::env::var_os(ENV_MOCK_DETECTED).is_some() {
             tracing::warn!(
                 "[HIL][EXPERIMENTAL] {ENV_MOCK_DETECTED} set — treating {:04x}:{:04x} as Detected (no USB)",
                 vid,
@@ -52,17 +71,42 @@ impl HilAgent {
             );
             return ProbePresence::Detected;
         }
+        if live && std::env::var_os(ENV_MOCK_DETECTED).is_some() {
+            tracing::warn!(
+                "[HIL] live mode — ignoring {ENV_MOCK_DETECTED} (USB only)"
+            );
+        }
         if usb::usb_device_present(vid, pid) {
             return ProbePresence::Detected;
+        }
+        if auto_probe {
+            if let Some((fv, fp, name)) = usb::find_present_probe(vid, pid) {
+                tracing::info!(
+                    "[HIL] auto-probe Detected {:04x}:{:04x} ({name})",
+                    fv,
+                    fp
+                );
+                return ProbePresence::Detected;
+            }
         }
         ProbePresence::Simulated
     }
 
     /// Abre canal com o probe. Default CI ⇒ [`ProbePresence::Simulated`].
     pub fn connect(vid: u16, pid: u16) -> Result<Self, String> {
-        let presence = Self::enumerate_presence(vid, pid);
+        Self::connect_opts(vid, pid, false, Self::require_live())
+    }
+
+    /// Connect com auto-probe / live (lab silício).
+    pub fn connect_opts(
+        vid: u16,
+        pid: u16,
+        auto_probe: bool,
+        require_live: bool,
+    ) -> Result<Self, String> {
+        let presence = Self::enumerate_presence_opts(vid, pid, auto_probe, require_live);
         tracing::info!(
-            "[HIL][EXPERIMENTAL] Connecting to probe {:04x}:{:04x} → {:?}",
+            "[HIL] Connecting to probe {:04x}:{:04x} auto_probe={auto_probe} live={require_live} → {:?}",
             vid,
             pid,
             presence

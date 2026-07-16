@@ -17,10 +17,12 @@ Template de probe HIL (host agent + gerador de firmware stub RP2350).
 
 ```bash
 base hil enumerate -o out/                 # default → Simulated
-base hil flash fw.bin --mock-flash -o out/ # mock_dry_run
-base hil lab-status --sop examples/hil_lab/SOP.md --mock-detected -o out/
-# cargo build -p base-cli --features hil_programmer,hil_usb
-# ./examples/hil_lab/run_hil_lab_assist.sh  # A1/A2 GREEN rehearsal
+base hil flash fw.bin --mock-flash -o out/ # rehearsal dry-run
+# Lab silício (sem mock):
+cargo build -p base-cli --features hil_live
+base hil lab-status --sop examples/hil_lab/SOP.md --live -o out/
+base hil flash fw.bin --live -o out/       # mode=lab_assist · ≠ production
+./examples/hil_lab/run_hil_lab_live.sh
 ```
 
 ## Enumerate (U2)

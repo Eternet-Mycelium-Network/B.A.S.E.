@@ -102,6 +102,13 @@ jobs:
           ./examples/pilot_study/run_study.sh
           test -f examples/pilot_study/out/CASE_SUMMARY_STUDY.md
 
+      - name: HIL Lab Gate A
+        timeout-minutes: 5
+        run: |
+          chmod +x examples/hil_lab/run_hil_lab.sh
+          ./examples/hil_lab/run_hil_lab.sh
+          test -f examples/hil_lab/out/CASE_SUMMARY_HIL_LAB.md
+
       - name: Pilot FW host gate
         run: |
           test -x examples/pilot/out/fw/firmware_host

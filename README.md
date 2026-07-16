@@ -9,13 +9,13 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **Tag [`v1.2.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0-rc)** (docs: Industrial Gate) · código forense [`v1.1.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.1.0-rc) · estável [`v1.0.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.0.0) · [CHANGELOG](CHANGELOG.md) · [Path to v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.00%20-%20Index.md)
+> **Tag [`v1.3.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.3.0-rc)** · docs Gate [`v1.2.0`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.2.0) · forense [`v1.1.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.1.0-rc) · [CHANGELOG](CHANGELOG.md)
 >
-> Specter VM + maturidade REAL\* + **[SOW Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md)** (quando promover HIL lab / PCB eng. / fix parcial).
+> Specter VM + **[Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md)** + **[HIL Lab Gate A](base-vault/23%20-%20Path%20to%20v1.3/23.30%20-%20HIL%20Lab%20Gate.md)** (`base hil lab-status`).
 >
-> Demo: [Playbook v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.20%20-%20Forensic%20Playbook.md) · `./examples/pilot/run.sh` · `./examples/pilot_study/run_study.sh`.
+> Demo: `./examples/pilot/run.sh` · `./examples/pilot_study/run_study.sh` · `./examples/hil_lab/run_hil_lab.sh`.
 >
-> **Não** é PCB fabricável, ASIC drop-in, SaaS turnkey, HIL production nem auto-fix — salvo Gate verde + SOW.
+> **Não** é PCB fabricável, HIL production turnkey nem auto-fix.
 
 ---
 
@@ -33,7 +33,7 @@ Fonte da verdade: [**Maturity Matrix**](base-vault/12%20-%20Path%20to%20Real/12.
 | `evolve` | **REAL\*** — métricas do HardwareSpec; opt-in no pipeline |
 | `fw` | **REAL\*** host (`make host`); ≠ silício |
 | `pcb` | **REAL\*** draft KiCad (`NOT FABRICABLE`) |
-| `hil` | **REAL\*** host (enumerate / mock); production gated |
+| `hil` | **REAL\*** host + **Gate A** `lab-status`; production gated |
 
 ### Wedges / smokes
 
@@ -157,6 +157,7 @@ PCB fabricável · ASIC drop-in · HIL production · SaaS turnkey · auto-fix co
 
 | Doc | Papel |
 |-----|-------|
+| [HIL Lab Gate A](base-vault/23%20-%20Path%20to%20v1.3/23.30%20-%20HIL%20Lab%20Gate.md) | `base hil lab-status` |
 | [SOW Industrial Gate](base-vault/22%20-%20Path%20to%20v1.2/22.30%20-%20SOW%20Industrial%20Gate.md) | Quando promover PCB/HIL/fix |
 | [Maturity Matrix](base-vault/12%20-%20Path%20to%20Real/12.02%20-%20Maturity%20Matrix.md) | Fonte da verdade |
 | [Playbook v1.2](base-vault/22%20-%20Path%20to%20v1.2/22.20%20-%20Forensic%20Playbook.md) | Demo + gate |

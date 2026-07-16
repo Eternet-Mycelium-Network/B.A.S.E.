@@ -1253,6 +1253,44 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                 }
             }
         }
+        HilCommand::LabStatus {
+            vid,
+            pid,
+            sop,
+            sow_signed,
+        } => {
+            let vid_n = parse_usb_id(vid)?;
+            let pid_n = parse_usb_id(pid)?;
+            let report = base_hil::evaluate_lab_gate(
+                vid_n,
+                pid_n,
+                *sow_signed,
+                sop.as_deref(),
+            );
+            tracing::info!(
+                "[HIL][Gate A] lab_assist_ready={} production={}",
+                report.lab_assist_ready,
+                report.production
+            );
+            for c in &report.checks {
+                tracing::info!(
+                    "[HIL][Gate A] {} {} — {}",
+                    c.id,
+                    if c.green { "GREEN" } else { "BLOCK" },
+                    c.detail
+                );
+            }
+            fs::create_dir_all(output)?;
+            let path = output.join("hil_lab_gate.json");
+            fs::write(&path, serde_json::to_string_pretty(&report)?)?;
+            tracing::info!("Lab gate report → {}", path.display());
+            if !report.lab_assist_ready {
+                tracing::warn!(
+                    "[HIL][Gate A] not lab-ready — see {}",
+                    report.sow_path_hint
+                );
+            }
+        }
     }
     Ok(())
 }

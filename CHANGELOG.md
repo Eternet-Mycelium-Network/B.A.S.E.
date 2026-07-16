@@ -1,6 +1,26 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`.
+
+## [Unreleased]
+
+## [v1.3.0-rc] — 2026-07-16
+
+Path to v1.3: HIL Lab Gate A — `base hil lab-status` + SOP + smoke.
+Smoke: `run_hil_lab.sh` (production=false; lab_assist_ready=false no CI default).
+
+### Added
+- `base_hil::lab_gate::evaluate_lab_gate` (A1–A5)
+- CLI `base hil lab-status --sop … [--sow-signed]`
+- `examples/hil_lab/SOP.md` + `run_hil_lab.sh` + CI
+
+### Not
+- HIL production / CI flash / PCB fab / auto-fix
+
+## [v1.2.0] — 2026-07-16
+
+Promoção de `v1.2.0-rc` (milestone docs: SOW Industrial Gate + mapa Paleo).
+Segue: Path to v1.3 — HIL Lab (Gate A).
 
 ## [v1.2.0-rc] — 2026-07-16
 

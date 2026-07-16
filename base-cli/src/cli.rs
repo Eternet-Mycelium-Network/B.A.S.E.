@@ -331,4 +331,21 @@ pub enum HilCommand {
         #[arg(long)]
         mock_flash: bool,
     },
+
+    /// Industrial Gate A — report HIL lab pré-condições (never production)
+    LabStatus {
+        #[arg(long, default_value = "0xcafe")]
+        vid: String,
+
+        #[arg(long, default_value = "0x4007")]
+        pid: String,
+
+        /// Path to lab SOP.md (Gate A3)
+        #[arg(long)]
+        sop: Option<PathBuf>,
+
+        /// Operator asserts SOW §HIL signed (Gate A5) — do not lie
+        #[arg(long, default_value_t = false)]
+        sow_signed: bool,
+    },
 }

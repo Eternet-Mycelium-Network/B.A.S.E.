@@ -1,19 +1,24 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`, `v1.6.1-rc`.
 
 ## [Unreleased]
 
+## [v1.6.1-rc] — 2026-07-17
+
+**G35 wedge absoluto** — USB live → atlas P0 → stub DT/earlycon → Specter/QEMU → fase C assist.
+Fecha o assist de bring-up no repo; port do OS = tree externo ([WEDGE_HANDOFF](examples/pilot_moto_g35/WEDGE_HANDOFF.md)).
+≠ OS turnkey · ≠ flash automático · ≠ earlycon no silício.
+
 ### Added
 - `base port usb-probe` / `usb-cross` — inventário USB vivo + cruzamento DTB
-- Atlas P0 absoluto `wedge_mmio_map.yaml` (UART/GIC/UFS) — USB + DT `@unit`
+- Atlas P0 absoluto `wedge_mmio_map.yaml` (UART `0x20200000` · GIC `0x12000000` · UFS `0x22000000`)
 - `base port wedge-p0` — board stub DTSI + earlycon hints + HAL host
-- Wedge P0 QEMU/Specter smoke — `run_wedge_qemu_smoke.sh` (bases absolutas)
-- Fase C assist — `run_wedge_hw_assist.sh` (receipt draft; **sem flash**)
-- Piloto G35: scripts wedge + vault [[24.41]]–[[24.44]]
+- Piloto: `run_wedge_pipeline.sh` · `run_wedge_qemu_smoke.sh` · `run_wedge_hw_assist.sh`
+- Vault `24.41`–`24.44` · `WEDGE_HANDOFF.md`
 
 ### Not
-- Walk completo de `ranges` FDT · earlycon verificado no silício · máquina QEMU ums9620 · flash automático · OS bootável / TaurOS turnkey
+- Walk completo de `ranges` FDT · máquina QEMU ums9620 · flash automático · OS bootável / TaurOS turnkey
 
 ## [v1.6.0-rc] — 2026-07-16
 

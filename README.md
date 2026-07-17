@@ -9,11 +9,11 @@
 
 **Motor de engenharia reversa comportamental assistida** — evidência → contratos → Reference Design.
 
-> **Tag [`v1.6.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.0-rc)** · Specter Live [`v1.5.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.5.0-rc) · OS-port [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc) · [CHANGELOG](CHANGELOG.md)
+> **Tag [`v1.6.1-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.1-rc)** · Twin↔guest [`v1.6.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.0-rc) · Specter Live [`v1.5.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.5.0-rc) · [CHANGELOG](CHANGELOG.md)
 >
-> Twin↔guest + Specter Live + OS Port Validation Assist.
+> G35 wedge absoluto (USB→atlas P0→stub→Specter) + Twin↔guest + OS-port assist.
 >
-> Demo: `base virt demo all` · `./examples/pilot_moto_g35/demo_virt.sh` · `run_virt_live.sh`.
+> Demo: `./examples/pilot_moto_g35/run_wedge_pipeline.sh` · `base virt demo all` · [WEDGE_HANDOFF](examples/pilot_moto_g35/WEDGE_HANDOFF.md).
 >
 > **Não** é port ReactOS/TaurOS turnkey, PCB fabricável nem HIL production.
 

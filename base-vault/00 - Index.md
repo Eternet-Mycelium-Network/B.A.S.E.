@@ -10,7 +10,7 @@ tags:
 
 > *"O que este hardware faz?" em vez de "Como este hardware foi implementado?"*
 
-**v1.0.0 ✅ · [`v1.6.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.0-rc) · [[26 - Path to v1.6/26.00 - Index|Path to v1.6]] · [`v1.5.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.5.0-rc) · [[25 - Path to v1.5/25.00 - Index|Path to v1.5]] · [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc) · [[24 - Path to v1.4/24.00 - Index|Path to v1.4]] · [[23 - Path to v1.3/23.00 - Index|Path to v1.3]] · [[22 - Path to v1.2/22.00 - Index|Path to v1.2]] · [[21 - Path to v1.1/21.00 - Index|Path to v1.1]] · [[12 - Path to Real/12.02 - Maturity Matrix|Maturity Matrix]]**
+**v1.0.0 ✅ · [`v1.6.1-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.1-rc) · [`v1.6.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.6.0-rc) · [[26 - Path to v1.6/26.00 - Index|Path to v1.6]] · [`v1.5.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.5.0-rc) · [[25 - Path to v1.5/25.00 - Index|Path to v1.5]] · [`v1.4.0-rc`](https://github.com/bmcc-DEV/B.A.S.E./releases/tag/v1.4.0-rc) · [[24 - Path to v1.4/24.00 - Index|Path to v1.4]] · [[23 - Path to v1.3/23.00 - Index|Path to v1.3]] · [[22 - Path to v1.2/22.00 - Index|Path to v1.2]] · [[21 - Path to v1.1/21.00 - Index|Path to v1.1]] · [[12 - Path to Real/12.02 - Maturity Matrix|Maturity Matrix]]**
 
 ```mermaid
 flowchart LR

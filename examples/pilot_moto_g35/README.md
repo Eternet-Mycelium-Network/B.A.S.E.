@@ -11,6 +11,7 @@ Unisoc T760 / AArch64. **≠** TaurOS completo gerado pelo B.A.S.E.
 | USB HW probe | `./run_usb_probe.sh` (ADB/fastboot/lsusb → `out_real/usb_probe/`) |
 | USB×DTB bring-up | `./run_usb_cross.sh` → `out_real/usb_cross/BRINGUP_CHECKLIST.md` |
 | Wedge P0 stub | `./run_wedge_p0.sh` → `out_real/wedge_p0/` (DTSI/earlycon/HAL) |
+| Wedge QEMU smoke | `./run_wedge_qemu_smoke.sh` → Specter twin + QEMU virt |
 | C Hardware | [SOP.md](SOP.md) + `hw_boot_receipt.example.json` |
 
 ```bash

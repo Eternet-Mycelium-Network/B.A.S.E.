@@ -625,6 +625,13 @@ pub enum PortCommand {
         #[arg(long)]
         platform: PathBuf,
     },
+
+    /// Board stub P0 (DTS/earlycon/HAL host) a partir de wedge_mmio_map.yaml
+    WedgeP0 {
+        /// wedge_mmio_map.yaml (de `port usb-cross`)
+        #[arg(long)]
+        map: PathBuf,
+    },
 }
 
 /// `base hil` subcommands — thin wrapper over `base-hil`.

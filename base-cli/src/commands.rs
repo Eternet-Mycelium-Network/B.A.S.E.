@@ -1540,6 +1540,35 @@ fn handle_port(action: &PortCommand, output: &Path) -> Result<()> {
                 println!("  p0_missing: {:?}", report.wedge_map.p0_missing);
             }
         }
+        PortCommand::WedgeP0 { map } => {
+            tracing::info!("[PORT] wedge P0 board stub from {}", map.display());
+            let yaml = fs::read_to_string(map)?;
+            let wedge: base_port::WedgeMmioMap = serde_yaml::from_str(&yaml)?;
+            let pkg = base_port::build_wedge_p0_package(&wedge);
+            fs::create_dir_all(output)?;
+            fs::write(output.join("wedge_p0_package.yaml"), pkg.to_yaml()?)?;
+            fs::write(output.join("board-ums9620-wedge-p0.dtsi"), &pkg.dtsi)?;
+            fs::write(output.join("cmdline_earlycon.txt"), {
+                let mut t = String::new();
+                for h in &pkg.earlycon_hints {
+                    t.push_str(h);
+                    t.push('\n');
+                }
+                t
+            })?;
+            fs::write(output.join("hal_wedge_p0.h"), &pkg.hal_h)?;
+            fs::write(output.join("hal_wedge_p0.c"), &pkg.hal_c)?;
+            fs::write(output.join("WEDGE_P0.md"), pkg.to_markdown())?;
+            assert!(!pkg.generates_os);
+            println!(
+                "wedge-p0 OK → {} (p0_ready={} uart={:?} gic={:?} ufs={:?})",
+                output.display(),
+                pkg.p0_ready,
+                pkg.uart_base.map(|a| format!("{a:#x}")),
+                pkg.gic_base.map(|a| format!("{a:#x}")),
+                pkg.ufs_base.map(|a| format!("{a:#x}")),
+            );
+        }
     }
     Ok(())
 }

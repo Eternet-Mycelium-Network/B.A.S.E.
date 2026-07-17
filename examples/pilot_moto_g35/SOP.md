@@ -15,7 +15,8 @@
 # Inventário vivo via USB (ADB autorizado ou bootloader) — read-only
 ./examples/pilot_moto_g35/run_usb_probe.sh
 ./examples/pilot_moto_g35/run_usb_cross.sh
-# → out_real/usb_cross/BRINGUP_CHECKLIST.md
+./examples/pilot_moto_g35/run_wedge_p0.sh
+# → out_real/wedge_p0/ (DTSI + earlycon hints) — ≠ verified on silicon
 
 # Exemplo flash — adaptar ao lab do Cliente (≠ CI):
 # adb reboot bootloader

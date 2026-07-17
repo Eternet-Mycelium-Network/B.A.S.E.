@@ -7,10 +7,11 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 ### Added
 - `base port usb-probe` / `usb-cross` — inventário USB vivo + cruzamento DTB
 - Atlas P0 absoluto `wedge_mmio_map.yaml` (UART/GIC/UFS) — USB + DT `@unit`
-- Piloto G35: `run_usb_probe.sh` · `run_usb_cross.sh` · vault [[24.41]]
+- `base port wedge-p0` — board stub DTSI + earlycon hints + HAL host
+- Piloto G35: `run_usb_probe.sh` · `run_usb_cross.sh` · `run_wedge_p0.sh` · vault [[24.41]] [[24.42]]
 
 ### Not
-- Walk completo de `ranges` FDT · OS bootável / TaurOS turnkey
+- Walk completo de `ranges` FDT · earlycon verificado no silício · OS bootável / TaurOS turnkey
 
 ## [v1.6.0-rc] — 2026-07-16
 

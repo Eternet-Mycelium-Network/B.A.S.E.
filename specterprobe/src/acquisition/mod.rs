@@ -35,6 +35,22 @@ pub struct DtbInfo {
     pub i2c_buses: Vec<I2cBus>,
     pub spi_buses: Vec<SpiBus>,
     pub dma_controllers: Vec<DmaController>,
+    /// Nós com `clocks` / `pinctrl-*` (phandles não resolvidos — assist).
+    #[serde(default)]
+    pub device_prop_hints: Vec<DevicePropHint>,
+}
+
+/// Propriedades de binding DT ainda sem resolução completa de phandle.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DevicePropHint {
+    pub path: String,
+    pub compatible: Vec<String>,
+    pub reg_bases: Vec<u64>,
+    pub clock_names: Vec<String>,
+    /// Células brutas de `clocks` (phandle + args).
+    pub clocks_cells: Vec<u32>,
+    pub pinctrl_names: Vec<String>,
+    pub pinctrl_0_cells: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

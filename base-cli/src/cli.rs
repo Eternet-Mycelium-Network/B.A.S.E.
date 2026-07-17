@@ -632,6 +632,17 @@ pub enum PortCommand {
         #[arg(long)]
         map: PathBuf,
     },
+
+    /// Hints clocks/pinctrl (USB × DTB) — phandles unresolved · ≠ OS turnkey
+    ClocksPinctrl {
+        /// usb_hw_inventory.yaml
+        #[arg(long)]
+        usb: PathBuf,
+
+        /// DTB / DTBO / vendor_boot com FDT embutido
+        #[arg(long)]
+        dtb: PathBuf,
+    },
 }
 
 /// `base hil` subcommands — thin wrapper over `base-hil`.

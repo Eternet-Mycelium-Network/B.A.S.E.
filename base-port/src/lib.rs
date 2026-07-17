@@ -3,6 +3,7 @@
 //! **Não** reescreve o OS completo. Gera o que o engenheiro precisa para *não*
 //! começar do zero ao mapear HAL/drivers entre arquiteturas.
 
+mod clocks_pinctrl;
 mod fossils;
 mod map;
 mod package;
@@ -12,6 +13,9 @@ mod usb_probe;
 mod wedge_map;
 mod wedge_stub;
 
+pub use clocks_pinctrl::{
+    build_clocks_pinctrl_from_bytes, build_clocks_pinctrl_hints, ClocksPinctrlHints,
+};
 pub use fossils::{FossilInventory, FossilKind, FossilRecord};
 pub use map::{AddressDriverMap, MappedRegion, TranslationStrategy};
 pub use package::{build_port_package, PortPackage, PortPackageOptions};

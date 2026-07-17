@@ -27,18 +27,21 @@ Levar para o tree externo:
 | Ficheiro | Uso |
 |----------|-----|
 | `out_real/wedge_p0/board-ums9620-wedge-p0.dtsi` | fragmento DT (GICD+GICR) |
+| `out_real/clocks_pinctrl/board-ums9620-wedge-clocks-pinctrl.dtsi` | clocks/pinctrl hints |
 | `out_real/wedge_p0/cmdline_earlycon.txt` | candidatos `earlycon=` |
 | `out_real/wedge_p0/hal_wedge_p0.[ch]` | stub host / referência |
 | `out_real/usb_cross/wedge_mmio_map.yaml` | mapa P0 machine-readable |
+| `out_real/wedge_specter/` | Specter twin + QMP live (≠ ums9620) |
 | `out_real/wedge_hw/PHASE_C_CHECKLIST.md` | lab |
 
 ## Trabalho no tree externo (ordem)
 
 1. Integrar DTSI (ou só cmdline) no board teu
-2. Completar clocks, pinctrl, `#redistributor-regions` a partir do DTB vendor
-3. Build Image / boot.img
-4. Flash **manual** (fastboot/EDL) — nunca CI default
-5. Preencher `hw_boot_receipt.json` (`result`, `image_sha256`)
+2. Resolver phandles `clocks=` / pinctrl UART a partir de `CLOCKS_PINCTRL.md` + vendor DT
+3. Completar `#redistributor-regions` no GICv3
+4. Build Image / boot.img
+5. Flash **manual** (fastboot/EDL) — nunca CI default
+6. Preencher `hw_boot_receipt.json` (`result`, `image_sha256`)
 
 ## O que o B.A.S.E. não faz
 

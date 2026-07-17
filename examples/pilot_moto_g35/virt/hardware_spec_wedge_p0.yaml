@@ -50,10 +50,39 @@ blocks:
   - id: gicd
     kind: InterruptController
     base_address: 0x12000000
-    size: 0x10000
+    size: 0x20000
     registers:
       - offset: 0
         name: GICD_CTLR
+        width: 32
+        access: ReadWrite
+        purpose: Control
+        reset_value: null
+        observed_values: []
+        bitfields: []
+        polling: false
+        count: 0
+    protocol:
+      states: []
+      transitions: []
+      entry_condition: null
+      exit_condition: null
+    timing:
+      activation: null
+      processing: null
+      interrupt_response: null
+      dma_setup: null
+      polling_interval: null
+    dma: null
+    dependencies: []
+    confidence: 0.6
+  - id: gicr
+    kind: InterruptController
+    base_address: 0x12040000
+    size: 0x100000
+    registers:
+      - offset: 0
+        name: GICR_CTLR
         width: 32
         access: ReadWrite
         purpose: Control

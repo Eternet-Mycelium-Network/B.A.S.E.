@@ -134,10 +134,18 @@ impl QmpClient {
 
     /// HMP passthrough (savevm/loadvm and friends).
     pub fn human_monitor(&mut self, command_line: &str) -> Result<Value, QmpError> {
-        self.execute(
+        let resp = self.execute(
             "human-monitor-command",
             Some(json!({ "command-line": command_line })),
-        )
+        )?;
+        // HMP errors often arrive as QMP success with `return: "Error: …"`.
+        if let Some(ret) = resp.get("return").and_then(|v| v.as_str()) {
+            let t = ret.trim();
+            if t.starts_with("Error:") || t.starts_with("error:") {
+                return Err(QmpError::Protocol(t.to_string()));
+            }
+        }
+        Ok(resp)
     }
 
     /// Snapshot save via HMP `savevm TAG`.

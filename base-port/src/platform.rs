@@ -866,6 +866,7 @@ mod tests {
             i2c_buses: vec![],
             spi_buses: vec![],
             dma_controllers: vec![],
+            device_prop_hints: vec![],
         }
     }
 

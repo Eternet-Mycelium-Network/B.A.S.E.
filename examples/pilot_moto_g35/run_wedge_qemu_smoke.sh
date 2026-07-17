@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # G35 wedge P0 — Specter score/twin + QEMU smoke genérico (≠ máquina Unisoc).
-# Bases: UART 0x20200000 · GIC 0x12000000 · UFS 0x22000000
+# Bases: UART 0x20200000 · GICD 0x12000000 · GICR 0x12040000 · UFS 0x22000000
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PILOT="$(cd "$(dirname "$0")" && pwd)"

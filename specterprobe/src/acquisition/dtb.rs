@@ -1,5 +1,5 @@
 use crate::acquisition::{
-    ClockMap, DmaController, DtbInfo, GpioMap, I2cBus, IrqMap, MmioRegion, SpiBus,
+    ClockMap, DevicePropHint, DmaController, DtbInfo, GpioMap, I2cBus, IrqMap, MmioRegion, SpiBus,
 };
 use anyhow::Context;
 use device_tree_parser::DeviceTreeParser;
@@ -33,6 +33,7 @@ pub fn parse_dtb(data: &[u8]) -> anyhow::Result<DtbInfo> {
     let mut i2c_buses = Vec::new();
     let mut spi_buses = Vec::new();
     let mut dma_controllers = Vec::new();
+    let mut device_prop_hints = Vec::new();
 
     let root_bus = bus_context(&tree, None);
     walk_node(
@@ -47,6 +48,7 @@ pub fn parse_dtb(data: &[u8]) -> anyhow::Result<DtbInfo> {
         &mut i2c_buses,
         &mut spi_buses,
         &mut dma_controllers,
+        &mut device_prop_hints,
     );
 
     Ok(DtbInfo {
@@ -59,6 +61,7 @@ pub fn parse_dtb(data: &[u8]) -> anyhow::Result<DtbInfo> {
         i2c_buses,
         spi_buses,
         dma_controllers,
+        device_prop_hints,
     })
 }
 
@@ -224,6 +227,20 @@ fn get_reg_translated(
         .collect()
 }
 
+fn get_string_list(node: &device_tree_parser::DeviceTreeNode, name: &str) -> Vec<String> {
+    node.properties
+        .iter()
+        .find(|p| p.name == name)
+        .and_then(|p| match &p.value {
+            device_tree_parser::PropertyValue::StringList(list) => {
+                Some(list.iter().map(|s| (*s).to_string()).collect())
+            }
+            device_tree_parser::PropertyValue::String(s) => Some(vec![s.to_string()]),
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
 fn walk_node(
     node: &device_tree_parser::DeviceTreeNode,
     parent_name: &str,
@@ -231,11 +248,12 @@ fn walk_node(
     ancestors: &[BusContext],
     mmio_regions: &mut Vec<MmioRegion>,
     irqs: &mut Vec<IrqMap>,
-    _clocks: &mut Vec<ClockMap>,
+    clocks: &mut Vec<ClockMap>,
     gpios: &mut Vec<GpioMap>,
     i2c_buses: &mut Vec<I2cBus>,
     spi_buses: &mut Vec<SpiBus>,
     dma_controllers: &mut Vec<DmaController>,
+    device_prop_hints: &mut Vec<DevicePropHint>,
 ) {
     let node_name = node.name;
     let full_name = if parent_name.is_empty() {
@@ -262,6 +280,44 @@ fn walk_node(
             irq,
             peripheral: full_name.clone(),
             flags: 0,
+        });
+    }
+
+    let is_clock_ctrl = node_name.contains("clock-controller")
+        || compat.iter().any(|c| {
+            let l = c.to_ascii_lowercase();
+            l.contains("clock-controller")
+                || l.contains("-clk")
+                || l.contains("-gate")
+                || (l.contains("clock") && l.contains("sprd"))
+        });
+    if is_clock_ctrl {
+        for &(addr, _) in &regs {
+            clocks.push(ClockMap {
+                clock_id: clocks.len() as u32,
+                name: Some(format!("{full_name}@{addr:#x}")),
+                frequency: None,
+            });
+        }
+    }
+
+    let clock_names = get_string_list(node, "clock-names");
+    let clocks_cells = node.prop_u32_array("clocks").unwrap_or_default();
+    let pinctrl_names = get_string_list(node, "pinctrl-names");
+    let pinctrl_0_cells = node.prop_u32_array("pinctrl-0").unwrap_or_default();
+    if !clock_names.is_empty()
+        || !clocks_cells.is_empty()
+        || !pinctrl_names.is_empty()
+        || !pinctrl_0_cells.is_empty()
+    {
+        device_prop_hints.push(DevicePropHint {
+            path: full_name.clone(),
+            compatible: compat.clone(),
+            reg_bases: regs.iter().map(|(a, _)| *a).collect(),
+            clock_names,
+            clocks_cells,
+            pinctrl_names,
+            pinctrl_0_cells,
         });
     }
 
@@ -319,11 +375,12 @@ fn walk_node(
             &child_ancestors,
             mmio_regions,
             irqs,
-            _clocks,
+            clocks,
             gpios,
             i2c_buses,
             spi_buses,
             dma_controllers,
+            device_prop_hints,
         );
     }
 }

@@ -1570,6 +1570,43 @@ fn handle_port(action: &PortCommand, output: &Path) -> Result<()> {
                 pkg.ufs_base.map(|a| format!("{a:#x}")),
             );
         }
+        PortCommand::ClocksPinctrl { usb, dtb } => {
+            tracing::info!(
+                "[PORT] clocks/pinctrl hints — {} × {}",
+                usb.display(),
+                dtb.display()
+            );
+            let raw = fs::read_to_string(usb)?;
+            let usb_inv: base_port::UsbHwInventory = serde_yaml::from_str(&raw)
+                .or_else(|_| serde_json::from_str(&raw))?;
+            let data = fs::read(dtb)?;
+            let blobs = base_port::extract_fdt_blobs(&data);
+            let primary = blobs
+                .iter()
+                .max_by_key(|b| b.len())
+                .map(|b| b.as_slice())
+                .unwrap_or(data.as_slice());
+            let hints = base_port::build_clocks_pinctrl_from_bytes(&usb_inv, primary)?;
+            fs::create_dir_all(output)?;
+            fs::write(output.join("clocks_pinctrl_hints.yaml"), hints.to_yaml()?)?;
+            fs::write(
+                output.join("clocks_pinctrl_hints.json"),
+                hints.to_json_pretty()?,
+            )?;
+            fs::write(
+                output.join("board-ums9620-wedge-clocks-pinctrl.dtsi"),
+                &hints.dtsi_snippet,
+            )?;
+            fs::write(output.join("CLOCKS_PINCTRL.md"), hints.to_markdown())?;
+            assert!(!hints.generates_os);
+            println!(
+                "clocks-pinctrl OK → {} (clk={} pinctrl={} uart_bindings={})",
+                output.display(),
+                hints.clock_controllers.len(),
+                hints.pinctrl.len(),
+                hints.uart_bindings.len()
+            );
+        }
     }
     Ok(())
 }

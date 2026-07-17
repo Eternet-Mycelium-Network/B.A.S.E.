@@ -1515,15 +1515,30 @@ fn handle_port(action: &PortCommand, output: &Path) -> Result<()> {
                 output.join("usb_dt_cross.json"),
                 report.to_json_pretty()?,
             )?;
+            fs::write(
+                output.join("wedge_mmio_map.yaml"),
+                report.wedge_map.to_yaml()?,
+            )?;
             fs::write(output.join("BRINGUP_CHECKLIST.md"), report.to_markdown())?;
             assert!(!report.generates_os);
             println!(
-                "usb-cross OK → {} (matches={} bringup={} target={})",
+                "usb-cross OK → {} (matches={} p0_ready={} target={})",
                 output.display(),
                 report.matches.len(),
-                report.bringup.len(),
+                report.wedge_map.p0_ready,
                 report.port_target
             );
+            if report.wedge_map.p0_ready {
+                for e in &report.wedge_map.entries {
+                    if e.priority == "P0" {
+                        if let Some(h) = &e.absolute_base_hex {
+                            println!("  P0 {}: {} ({:?})", e.class, h, e.source);
+                        }
+                    }
+                }
+            } else {
+                println!("  p0_missing: {:?}", report.wedge_map.p0_missing);
+            }
         }
     }
     Ok(())

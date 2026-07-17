@@ -4,6 +4,14 @@ Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.
 
 ## [Unreleased]
 
+### Added
+- `base port usb-probe` / `usb-cross` — inventário USB vivo + cruzamento DTB
+- Atlas P0 absoluto `wedge_mmio_map.yaml` (UART/GIC/UFS) — USB + DT `@unit`
+- Piloto G35: `run_usb_probe.sh` · `run_usb_cross.sh` · vault [[24.41]]
+
+### Not
+- Walk completo de `ranges` FDT · OS bootável / TaurOS turnkey
+
 ## [v1.6.0-rc] — 2026-07-16
 
 Path to v1.6: **Twin↔guest** + BIR DigitalTwin + QMP savevm + continuous watch.

@@ -367,9 +367,24 @@ fn component_from_regions(
         }
         if let Some(p) = &r.peripheral {
             nodes.push(p.clone());
+            for ua in crate::wedge_map::unit_addrs_from_node(p) {
+                if ua >= crate::wedge_map::PHYS_HINT_MIN && !bases.contains(&ua) {
+                    bases.push(ua);
+                }
+            }
         }
-        bases.push(r.address);
+        if !bases.contains(&r.address) {
+            bases.push(r.address);
+        }
     }
+    bases.sort_by_key(|b| {
+        if *b >= crate::wedge_map::PHYS_HINT_MIN {
+            0u8
+        } else {
+            1u8
+        }
+    });
+    bases.dedup();
     PlatformComponent {
         class: class.into(),
         status: DiscoveryStatus::Found,

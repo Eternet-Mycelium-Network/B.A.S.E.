@@ -34,4 +34,5 @@ fi
   -o "$OUT_CROSS"
 
 echo "Bring-up → $OUT_CROSS/BRINGUP_CHECKLIST.md"
+echo "Wedge map → $OUT_CROSS/wedge_mmio_map.yaml"
 echo "generates_os=false"

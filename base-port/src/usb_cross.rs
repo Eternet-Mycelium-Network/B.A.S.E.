@@ -4,6 +4,7 @@
 
 use crate::platform::PlatformInventory;
 use crate::usb_probe::UsbHwInventory;
+use crate::wedge_map::{build_wedge_mmio_map, WedgeMmioMap};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -46,6 +47,7 @@ pub struct UsbDtCrossReport {
     pub usb_only: Vec<String>,
     pub dt_class_coverage: BTreeMap<String, String>,
     pub bringup: Vec<BringupStep>,
+    pub wedge_map: WedgeMmioMap,
     pub port_target: String,
     pub generates_os: bool,
     pub auto_fix_complete: bool,
@@ -74,6 +76,9 @@ impl UsbDtCrossReport {
             self.usb_only.len()
         ));
         md.push_str(&format!("- note: {}\n\n", self.note));
+
+        md.push_str(&self.wedge_map.to_markdown_section());
+        md.push('\n');
 
         md.push_str("## DT class coverage\n\n");
         md.push_str("| Class | Coverage |\n|-------|----------|\n");
@@ -325,14 +330,16 @@ pub fn cross_usb_dt(usb: &UsbHwInventory, plat: &PlatformInventory) -> UsbDtCros
     }
 
     let bringup = build_bringup(usb, plat, &matches);
+    let wedge_map = build_wedge_mmio_map(usb, plat);
 
     UsbDtCrossReport {
-        ok: !matches.is_empty(),
+        ok: !matches.is_empty() || wedge_map.p0_ready,
         usb_devices: usb.platform_devices.len(),
         matches,
         usb_only,
         dt_class_coverage,
         bringup,
+        wedge_map,
         port_target: "linux_wedge_uart_ufs_g35".into(),
         generates_os: false,
         auto_fix_complete: false,

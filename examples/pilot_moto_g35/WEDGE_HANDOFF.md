@@ -8,7 +8,8 @@
 | Periférico | Base | Origem |
 |------------|------|--------|
 | UART0 | `0x20200000` | USB `20200000.serial` |
-| GICD (GICv3) | `0x12000000` | DT `@unit` |
+| GICD (GICv3) | `0x12000000` | DT `reg[0]` (`#address-cells=2`) |
+| GICR (GICv3) | `0x12040000` | DT `reg[1]` (size `0x100000` no vendor) |
 | UFS | `0x22000000` | USB `22000000.ufs` |
 
 Arch timer = CNT* (sem MMIO no atlas).
@@ -25,7 +26,7 @@ Levar para o tree externo:
 
 | Ficheiro | Uso |
 |----------|-----|
-| `out_real/wedge_p0/board-ums9620-wedge-p0.dtsi` | fragmento DT |
+| `out_real/wedge_p0/board-ums9620-wedge-p0.dtsi` | fragmento DT (GICD+GICR) |
 | `out_real/wedge_p0/cmdline_earlycon.txt` | candidatos `earlycon=` |
 | `out_real/wedge_p0/hal_wedge_p0.[ch]` | stub host / referência |
 | `out_real/usb_cross/wedge_mmio_map.yaml` | mapa P0 machine-readable |
@@ -34,7 +35,7 @@ Levar para o tree externo:
 ## Trabalho no tree externo (ordem)
 
 1. Integrar DTSI (ou só cmdline) no board teu
-2. Completar **GICR**, clocks, pinctrl a partir do DTB vendor completo
+2. Completar clocks, pinctrl, `#redistributor-regions` a partir do DTB vendor
 3. Build Image / boot.img
 4. Flash **manual** (fastboot/EDL) — nunca CI default
 5. Preencher `hw_boot_receipt.json` (`result`, `image_sha256`)
@@ -42,7 +43,6 @@ Levar para o tree externo:
 ## O que o B.A.S.E. não faz
 
 - Compilar/bootar o OS alvo
-- Walk completo de `ranges` FDT
 - Garantir earlycon no telefone
 - Modem / GPU / TrustZone
 

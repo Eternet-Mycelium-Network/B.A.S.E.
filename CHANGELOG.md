@@ -1,8 +1,14 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`, `v1.6.1-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`, `v1.6.1-rc`, `v1.6.2-rc`.
 
 ## [Unreleased]
+
+## [v1.6.2-rc] — 2026-07-17
+
+### Changed
+- DTB `reg` parse: respeita `#address-cells`/`#size-cells` + walk de `ranges` (GICR ums9620 `0x12040000`)
+- Wedge stub DTSI/HAL emite GICD+GICR quando o atlas resolve `gic_redistributor`
 
 ## [v1.6.1-rc] — 2026-07-17
 

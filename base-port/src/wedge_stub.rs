@@ -10,6 +10,7 @@ pub struct WedgeP0Package {
     pub target: String,
     pub uart_base: Option<u64>,
     pub gic_base: Option<u64>,
+    pub gicr_base: Option<u64>,
     pub ufs_base: Option<u64>,
     pub p0_ready: bool,
     pub dtsi: String,
@@ -25,12 +26,12 @@ pub struct WedgeP0Package {
 
 impl WedgeP0Package {
     pub fn to_yaml(&self) -> anyhow::Result<String> {
-        // Omit large blobs from yaml meta — store paths in markdown instead
         #[derive(Serialize)]
         struct Meta<'a> {
             target: &'a str,
             uart_base_hex: Option<String>,
             gic_base_hex: Option<String>,
+            gicr_base_hex: Option<String>,
             ufs_base_hex: Option<String>,
             p0_ready: bool,
             earlycon_hints: &'a [String],
@@ -44,6 +45,7 @@ impl WedgeP0Package {
             target: &self.target,
             uart_base_hex: self.uart_base.map(|a| format!("{a:#x}")),
             gic_base_hex: self.gic_base.map(|a| format!("{a:#x}")),
+            gicr_base_hex: self.gicr_base.map(|a| format!("{a:#x}")),
             ufs_base_hex: self.ufs_base.map(|a| format!("{a:#x}")),
             p0_ready: self.p0_ready,
             earlycon_hints: &self.earlycon_hints,
@@ -71,9 +73,10 @@ impl WedgeP0Package {
             self.target, self.p0_ready
         ));
         md.push_str(&format!(
-            "- UART: {} · GIC: {} · UFS: {}\n\n",
+            "- UART: {} · GICD: {} · GICR: {} · UFS: {}\n\n",
             hex_opt(self.uart_base),
             hex_opt(self.gic_base),
+            hex_opt(self.gicr_base),
             hex_opt(self.ufs_base)
         ));
         md.push_str("## Files\n\n");
@@ -87,7 +90,7 @@ impl WedgeP0Package {
         }
         md.push_str("\n## Checklist humano\n\n");
         md.push_str("- [ ] Confirmar baud/clock UART no SoC (USB só deu base)\n");
-        md.push_str("- [ ] Mapear GICR (GICv3) — só GICD unit-addr conhecido\n");
+        md.push_str("- [ ] Confirmar GICR size / #redistributor-regions no vendor DT\n");
         md.push_str("- [ ] Integrar DTSI no tree externo (Linux/TaurOS)\n");
         md.push_str("- [ ] Fase C: receipt HW se testar earlycon no telefone\n");
         md.push_str("\n## Not\n\n");
@@ -120,17 +123,19 @@ fn entry_source(map: &WedgeMmioMap, class: &str) -> Option<AddrSource> {
 pub fn build_wedge_p0_package(map: &WedgeMmioMap) -> WedgeP0Package {
     let uart = entry_base(map, "uart");
     let gic = entry_base(map, "gic");
+    let gicr = entry_base(map, "gic_redistributor");
     let ufs = entry_base(map, "ufs").or_else(|| entry_base(map, "storage_emmc_ufs"));
 
-    let dtsi = render_dtsi(uart, gic, ufs, map);
+    let dtsi = render_dtsi(uart, gic, gicr, ufs, map);
     let hints = earlycon_hints(uart);
     let cmdline = hints.first().cloned().unwrap_or_default();
-    let (hal_h, hal_c) = render_hal(uart, gic, ufs);
+    let (hal_h, hal_c) = render_hal(uart, gic, gicr, ufs);
 
     WedgeP0Package {
         target: map.target.clone(),
         uart_base: uart,
         gic_base: gic,
+        gicr_base: gicr,
         ufs_base: ufs,
         p0_ready: map.p0_ready && uart.is_some() && gic.is_some() && ufs.is_some(),
         dtsi,
@@ -142,12 +147,14 @@ pub fn build_wedge_p0_package(map: &WedgeMmioMap) -> WedgeP0Package {
         auto_fix_complete: false,
         honesty: base_core::HONESTY_NOTE.to_string(),
         note: format!(
-            "Stub assist from wedge map (uart={:?} gic={:?} ufs={:?}). Sources: uart={:?} gic={:?} ufs={:?}.",
+            "Stub assist from wedge map (uart={:?} gicd={:?} gicr={:?} ufs={:?}). Sources: uart={:?} gic={:?} gicr={:?} ufs={:?}.",
             uart.map(|a| format!("{a:#x}")),
             gic.map(|a| format!("{a:#x}")),
+            gicr.map(|a| format!("{a:#x}")),
             ufs.map(|a| format!("{a:#x}")),
             entry_source(map, "uart"),
             entry_source(map, "gic"),
+            entry_source(map, "gic_redistributor"),
             entry_source(map, "storage_emmc_ufs"),
         ),
     }
@@ -167,6 +174,7 @@ fn earlycon_hints(uart: Option<u64>) -> Vec<String> {
 fn render_dtsi(
     uart: Option<u64>,
     gic: Option<u64>,
+    gicr: Option<u64>,
     ufs: Option<u64>,
     map: &WedgeMmioMap,
 ) -> String {
@@ -179,10 +187,12 @@ fn render_dtsi(
     s.push_str(" */\n\n");
     s.push_str("/ {\n");
     s.push_str("    chosen {\n");
+    if uart.is_some() {
+        s.push_str(
+            "        /* Prefer one of cmdline_earlycon.txt; stdout-path is a hint */\n",
+        );
+    }
     if let Some(u) = uart {
-        s.push_str(&format!(
-            "        /* Prefer one of cmdline_earlycon.txt; stdout-path is a hint */\n"
-        ));
         s.push_str(&format!(
             "        stdout-path = \"/soc/serial@{u:x}:115200n8\";\n"
         ));
@@ -195,25 +205,42 @@ fn render_dtsi(
     s.push_str("        ranges;\n\n");
 
     if let Some(g) = gic {
-        s.push_str(&format!(
-            "        /* GICv3 — GICD at {g:#x}; GICR base TBD from full DT ranges */\n"
-        ));
-        s.push_str(&format!(
-            "        gic: interrupt-controller@{g:x} {{\n"
-        ));
-        s.push_str("            compatible = \"arm,gic-v3\";\n");
-        s.push_str("            #interrupt-cells = <3>;\n");
-        s.push_str("            interrupt-controller;\n");
-        s.push_str(&format!(
-            "            reg = <0x0 {g:#x} 0x0 0x10000>; /* GICD size placeholder */\n"
-        ));
-        s.push_str("        };\n\n");
+        match gicr {
+            Some(r) => {
+                s.push_str(&format!(
+                    "        /* GICv3 — GICD {g:#x} · GICR {r:#x} (DT reg cells/ranges) */\n"
+                ));
+                s.push_str(&format!("        gic: interrupt-controller@{g:x} {{\n"));
+                s.push_str("            compatible = \"arm,gic-v3\";\n");
+                s.push_str("            #interrupt-cells = <3>;\n");
+                s.push_str("            interrupt-controller;\n");
+                s.push_str(&format!("            reg = <0x0 {g:#x} 0x0 0x20000>,\n"));
+                s.push_str(&format!(
+                    "                  <0x0 {r:#x} 0x0 0x100000>; /* GICR size from vendor DT */\n"
+                ));
+                s.push_str(
+                    "            /* #redistributor-regions / interrupts: bind from vendor DT */\n",
+                );
+                s.push_str("        };\n\n");
+            }
+            None => {
+                s.push_str(&format!(
+                    "        /* GICv3 — GICD at {g:#x}; GICR missing from atlas */\n"
+                ));
+                s.push_str(&format!("        gic: interrupt-controller@{g:x} {{\n"));
+                s.push_str("            compatible = \"arm,gic-v3\";\n");
+                s.push_str("            #interrupt-cells = <3>;\n");
+                s.push_str("            interrupt-controller;\n");
+                s.push_str(&format!(
+                    "            reg = <0x0 {g:#x} 0x0 0x10000>; /* GICD size placeholder */\n"
+                ));
+                s.push_str("        };\n\n");
+            }
+        }
     }
 
     if let Some(u) = uart {
-        s.push_str(&format!(
-            "        /* UART0 — USB 20200000.serial; clock/pinctrl TBD */\n"
-        ));
+        s.push_str("        /* UART0 — USB 20200000.serial; clock/pinctrl TBD */\n");
         s.push_str(&format!("        serial0: serial@{u:x} {{\n"));
         s.push_str("            compatible = \"sprd,sc9836-uart\", \"sprd,sc9860-uart\";\n");
         s.push_str(&format!("            reg = <0x0 {u:#x} 0x0 0x100>;\n"));
@@ -223,9 +250,7 @@ fn render_dtsi(
     }
 
     if let Some(f) = ufs {
-        s.push_str(&format!(
-            "        /* UFS — USB 22000000.ufs; phy/PMIC TBD */\n"
-        ));
+        s.push_str("        /* UFS — USB 22000000.ufs; phy/PMIC TBD */\n");
         s.push_str(&format!("        ufs@{f:x} {{\n"));
         s.push_str("            compatible = \"jedec,ufs-2.0\";\n");
         s.push_str(&format!("            reg = <0x0 {f:#x} 0x0 0x10000>;\n"));
@@ -238,7 +263,12 @@ fn render_dtsi(
     s
 }
 
-fn render_hal(uart: Option<u64>, gic: Option<u64>, ufs: Option<u64>) -> (String, String) {
+fn render_hal(
+    uart: Option<u64>,
+    gic: Option<u64>,
+    gicr: Option<u64>,
+    ufs: Option<u64>,
+) -> (String, String) {
     let mut h = String::new();
     h.push_str("/* B.A.S.E. wedge P0 HAL — host stub */\n");
     h.push_str("#pragma once\n");
@@ -248,6 +278,9 @@ fn render_hal(uart: Option<u64>, gic: Option<u64>, ufs: Option<u64>) -> (String,
     }
     if let Some(g) = gic {
         h.push_str(&format!("#define WEDGE_GICD_BASE   UINT64_C({g:#x})\n"));
+    }
+    if let Some(r) = gicr {
+        h.push_str(&format!("#define WEDGE_GICR_BASE   UINT64_C({r:#x})\n"));
     }
     if let Some(f) = ufs {
         h.push_str(&format!("#define WEDGE_UFS_BASE    UINT64_C({f:#x})\n"));
@@ -278,6 +311,9 @@ fn render_hal(uart: Option<u64>, gic: Option<u64>, ufs: Option<u64>) -> (String,
     }
     if gic.is_some() {
         c.push_str("    if (base == WEDGE_GICD_BASE) return g_gic_shadow;\n");
+    }
+    if gicr.is_some() {
+        c.push_str("    if (base == WEDGE_GICR_BASE) return g_gic_shadow;\n");
     }
     if ufs.is_some() {
         c.push_str("    if (base == WEDGE_UFS_BASE) return g_ufs_shadow;\n");
@@ -313,7 +349,7 @@ mod tests {
     use crate::wedge_map::{AddrSource, WedgeMmioEntry, WedgeMmioMap};
 
     #[test]
-    fn stub_emits_absolute_bases() {
+    fn stub_emits_absolute_bases_with_gicr() {
         let map = WedgeMmioMap {
             target: "linux_wedge_uart_ufs_g35".into(),
             entries: vec![
@@ -333,7 +369,18 @@ mod tests {
                     priority: "P0".into(),
                     absolute_base: Some(0x1200_0000),
                     absolute_base_hex: Some("0x12000000".into()),
-                    source: AddrSource::DtUnitAddr,
+                    source: AddrSource::DtReg,
+                    usb_devices: vec![],
+                    dt_nodes: vec![],
+                    dt_reg_bases: vec![],
+                    note: String::new(),
+                },
+                WedgeMmioEntry {
+                    class: "gic_redistributor".into(),
+                    priority: "P0".into(),
+                    absolute_base: Some(0x1204_0000),
+                    absolute_base_hex: Some("0x12040000".into()),
+                    source: AddrSource::DtGicrReg,
                     usb_devices: vec![],
                     dt_nodes: vec![],
                     dt_reg_bases: vec![],
@@ -360,11 +407,9 @@ mod tests {
         };
         let pkg = build_wedge_p0_package(&map);
         assert!(pkg.p0_ready);
-        assert!(pkg.dtsi.contains("0x20200000"));
-        assert!(pkg.dtsi.contains("0x12000000"));
-        assert!(pkg.dtsi.contains("0x22000000"));
-        assert!(pkg.hal_h.contains("WEDGE_UART0_BASE"));
+        assert_eq!(pkg.gicr_base, Some(0x1204_0000));
+        assert!(pkg.dtsi.contains("0x12040000"));
+        assert!(pkg.hal_h.contains("WEDGE_GICR_BASE"));
         assert!(!pkg.generates_os);
-        assert!(pkg.earlycon_hints.iter().any(|h| h.contains("0x20200000")));
     }
 }

@@ -1561,11 +1561,12 @@ fn handle_port(action: &PortCommand, output: &Path) -> Result<()> {
             fs::write(output.join("WEDGE_P0.md"), pkg.to_markdown())?;
             assert!(!pkg.generates_os);
             println!(
-                "wedge-p0 OK → {} (p0_ready={} uart={:?} gic={:?} ufs={:?})",
+                "wedge-p0 OK → {} (p0_ready={} uart={:?} gicd={:?} gicr={:?} ufs={:?})",
                 output.display(),
                 pkg.p0_ready,
                 pkg.uart_base.map(|a| format!("{a:#x}")),
                 pkg.gic_base.map(|a| format!("{a:#x}")),
+                pkg.gicr_base.map(|a| format!("{a:#x}")),
                 pkg.ufs_base.map(|a| format!("{a:#x}")),
             );
         }

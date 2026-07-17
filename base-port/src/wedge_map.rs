@@ -1,8 +1,9 @@
-//! Atlas MMIO absoluto P0 (UART → GIC → UFS) — USB live + unit-addr DTB.
+//! Atlas MMIO absoluto P0 (UART → GICD/GICR → UFS) — USB live + DTB.
 //!
-//! Não faz walk completo de `ranges` no FDT; combina:
+//! Combina:
 //! - endereços absolutos de `/sys/bus/platform/devices` (USB)
-//! - `@unit` nos nós DTB quando parecer físico (≥ 0x0100_0000)
+//! - `reg` DTB com `#address-cells` / `#size-cells` + walk de `ranges` (specterprobe)
+//! - `@unit` como fallback quando parecer físico (≥ 0x0100_0000)
 //!
 //! ≠ OS turnkey · `generates_os: false`.
 
@@ -19,6 +20,8 @@ pub enum AddrSource {
     Usb,
     DtUnitAddr,
     DtReg,
+    /// Segundo `reg` GICv3 (GICR) após GICD, já em físico via cells/ranges.
+    DtGicrReg,
     Unresolved,
 }
 
@@ -191,18 +194,84 @@ fn resolve_entry(
         };
     }
 
-    // Prefer USB absolute for uart/storage/gpu; DT unit-addr for gic (often no sysfs).
+    // GICv3 redistributor: second physical reg of the gic component (GICD is first).
+    if class == "gic_redistributor" {
+        let gic = plat.components.iter().find(|c| c.class == "gic");
+        let mut phys: Vec<u64> = gic
+            .map(|c| {
+                c.bases
+                    .iter()
+                    .copied()
+                    .filter(|b| *b >= PHYS_HINT_MIN)
+                    .collect()
+            })
+            .unwrap_or_default();
+        phys.sort();
+        phys.dedup();
+        let gicd = phys.first().copied();
+        let gicr = phys.iter().copied().find(|&b| Some(b) != gicd);
+        let (absolute, source, note) = if let Some(a) = gicr {
+            (
+                Some(a),
+                AddrSource::DtGicrReg,
+                format!("GICv3 GICR from DT reg[1+] {a:#x} (GICD={})", hex_opt(gicd)),
+            )
+        } else {
+            (
+                None,
+                AddrSource::Unresolved,
+                "GICR not found — need ≥2 physical GICv3 reg entries after cells/ranges parse"
+                    .into(),
+            )
+        };
+        return WedgeMmioEntry {
+            class: class.into(),
+            priority: priority.into(),
+            absolute_base: absolute,
+            absolute_base_hex: absolute.map(|a| format!("{a:#x}")),
+            source,
+            usb_devices: vec![],
+            dt_nodes: gic.map(|c| c.nodes.iter().cloned().take(6).collect()).unwrap_or_default(),
+            dt_reg_bases: gic
+                .map(|c| c.bases.iter().copied().take(8).collect())
+                .unwrap_or_default(),
+            note,
+        };
+    }
+
+    // Prefer USB absolute for uart/storage/gpu; DT reg/unit for gic (often no sysfs).
     let (absolute, source, note) = if let Some((a, _)) = usb_hits.first() {
         (
             Some(*a),
             AddrSource::Usb,
             format!("USB platform device absolute {a:#x}"),
         )
+    } else if class == "gic" {
+        // Prefer DT reg[0] (GICD) over unit-addr when both exist.
+        if let Some(&a) = dt_regs.iter().find(|&&b| b >= PHYS_HINT_MIN) {
+            (
+                Some(a),
+                AddrSource::DtReg,
+                format!("DT reg GICD {a:#x}"),
+            )
+        } else if let Some(&a) = dt_phys.first() {
+            (
+                Some(a),
+                AddrSource::DtUnitAddr,
+                format!("DT unit-addr @{a:x} (GICD)"),
+            )
+        } else {
+            (
+                None,
+                AddrSource::Unresolved,
+                "No GICD absolute base".into(),
+            )
+        }
     } else if let Some(&a) = dt_phys.first() {
         (
             Some(a),
             AddrSource::DtUnitAddr,
-            format!("DT unit-addr @{a:x} (≥ PHYS_HINT_MIN) — confirm ranges if bus-translated"),
+            format!("DT unit-addr @{a:x} (≥ PHYS_HINT_MIN)"),
         )
     } else if let Some(&a) = dt_regs.iter().find(|&&b| b >= PHYS_HINT_MIN) {
         (
@@ -214,7 +283,7 @@ fn resolve_entry(
         (
             None,
             AddrSource::Unresolved,
-            "No absolute base — need ranges walk or rooted DT / USB device".into(),
+            "No absolute base — need rooted DT / USB device".into(),
         )
     };
 
@@ -236,6 +305,7 @@ pub fn build_wedge_mmio_map(usb: &UsbHwInventory, plat: &PlatformInventory) -> W
     let classes: &[(&str, &str)] = &[
         ("uart", "P0"),
         ("gic", "P0"),
+        ("gic_redistributor", "P0"),
         ("arm_generic_timer", "P0"),
         ("storage_emmc_ufs", "P0"),
         ("gpio", "P1"),
@@ -252,20 +322,29 @@ pub fn build_wedge_mmio_map(usb: &UsbHwInventory, plat: &PlatformInventory) -> W
         if e.priority != "P0" {
             continue;
         }
-        if e.class == "arm_generic_timer" {
-            continue; // no MMIO required
+        if e.class == "arm_generic_timer" || e.class == "gic_redistributor" {
+            // timer: no MMIO; GICR strongly preferred but GICD alone keeps p0_ready
+            if e.class == "gic_redistributor" && e.absolute_base.is_none() {
+                p0_missing.push(e.class.clone());
+            }
+            continue;
         }
         if e.absolute_base.is_none() {
             p0_missing.push(e.class.clone());
         }
     }
 
-    let p0_ready = p0_missing.is_empty()
-        && entries.iter().any(|e| e.class == "uart" && e.absolute_base.is_some())
+    let p0_ready = entries.iter().any(|e| e.class == "uart" && e.absolute_base.is_some())
         && entries.iter().any(|e| e.class == "gic" && e.absolute_base.is_some())
         && entries
             .iter()
-            .any(|e| e.class == "storage_emmc_ufs" && e.absolute_base.is_some());
+            .any(|e| e.class == "storage_emmc_ufs" && e.absolute_base.is_some())
+        && !entries.iter().any(|e| {
+            e.priority == "P0"
+                && e.absolute_base.is_none()
+                && e.class != "arm_generic_timer"
+                && e.class != "gic_redistributor"
+        });
 
     WedgeMmioMap {
         target: "linux_wedge_uart_ufs_g35".into(),
@@ -275,9 +354,13 @@ pub fn build_wedge_mmio_map(usb: &UsbHwInventory, plat: &PlatformInventory) -> W
         generates_os: false,
         auto_fix_complete: false,
         honesty: base_core::HONESTY_NOTE.to_string(),
-        note: "Atlas P0: USB absolutos + DT @unit físicos. ≠ walk completo de ranges · ≠ OS bootável."
+        note: "Atlas P0: USB + DT reg (cells/ranges). GICR em p0_missing se ausente — ≠ OS bootável."
             .into(),
     }
+}
+
+fn hex_opt(a: Option<u64>) -> String {
+    a.map(|x| format!("{x:#x}")).unwrap_or_else(|| "—".into())
 }
 
 #[cfg(test)]
@@ -307,9 +390,9 @@ mod tests {
                 PlatformComponent {
                     class: "gic".into(),
                     status: DiscoveryStatus::Found,
-                    compatible: vec![],
+                    compatible: vec!["arm,gic-v3".into()],
                     nodes: vec![nodes_gic.into()],
-                    bases: vec![0],
+                    bases: vec![0x1200_0000, 0x1204_0000],
                     notes: String::new(),
                     rewrite_hint: String::new(),
                 },
@@ -380,10 +463,18 @@ mod tests {
         assert_eq!(uart.source, AddrSource::Usb);
         let gic = m.entries.iter().find(|e| e.class == "gic").unwrap();
         assert_eq!(gic.absolute_base, Some(0x1200_0000));
-        assert_eq!(gic.source, AddrSource::DtUnitAddr);
+        assert_eq!(gic.source, AddrSource::DtReg);
+        let gicr = m
+            .entries
+            .iter()
+            .find(|e| e.class == "gic_redistributor")
+            .unwrap();
+        assert_eq!(gicr.absolute_base, Some(0x1204_0000));
+        assert_eq!(gicr.source, AddrSource::DtGicrReg);
         let ufs = m.entries.iter().find(|e| e.class == "storage_emmc_ufs").unwrap();
         assert_eq!(ufs.absolute_base, Some(0x2200_0000));
         assert!(!m.generates_os);
+        assert!(!m.p0_missing.contains(&"gic_redistributor".into()));
     }
 
     #[test]

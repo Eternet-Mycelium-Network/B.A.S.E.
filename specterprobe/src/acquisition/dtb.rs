@@ -3,7 +3,6 @@ use crate::acquisition::{
 };
 use anyhow::Context;
 use device_tree_parser::DeviceTreeParser;
-use std::convert::TryFrom;
 use std::path::Path;
 
 pub fn parse_dtb_file(path: &Path) -> anyhow::Result<DtbInfo> {
@@ -35,10 +34,19 @@ pub fn parse_dtb(data: &[u8]) -> anyhow::Result<DtbInfo> {
     let mut spi_buses = Vec::new();
     let mut dma_controllers = Vec::new();
 
+    let root_bus = bus_context(&tree, None);
     walk_node(
-        &tree, "",
-        &mut mmio_regions, &mut irqs, &mut clocks,
-        &mut gpios, &mut i2c_buses, &mut spi_buses, &mut dma_controllers,
+        &tree,
+        "",
+        &root_bus,
+        &[],
+        &mut mmio_regions,
+        &mut irqs,
+        &mut clocks,
+        &mut gpios,
+        &mut i2c_buses,
+        &mut spi_buses,
+        &mut dma_controllers,
     );
 
     Ok(DtbInfo {
@@ -62,65 +70,165 @@ fn get_compatible_list(node: &device_tree_parser::DeviceTreeNode) -> Vec<String>
             device_tree_parser::PropertyValue::StringList(list) => {
                 Some(list.iter().map(|s| (*s).to_string()).collect())
             }
-            device_tree_parser::PropertyValue::String(s) => {
-                Some(vec![s.to_string()])
-            }
+            device_tree_parser::PropertyValue::String(s) => Some(vec![s.to_string()]),
             _ => None,
         })
         .unwrap_or_default()
 }
 
-fn get_reg(node: &device_tree_parser::DeviceTreeNode) -> Vec<(u64, u64)> {
-    let reg_prop = match node.properties.iter().find(|p| p.name == "reg") {
-        Some(p) => p,
-        None => return vec![],
-    };
+#[derive(Clone, Debug)]
+struct RangeMap {
+    child_addr: u64,
+    parent_addr: u64,
+    size: u64,
+}
 
-    match &reg_prop.value {
-        device_tree_parser::PropertyValue::U32Array(data) => {
-            let mut regions = Vec::new();
-            if let Ok(values) = Vec::<u32>::try_from(&reg_prop.value) {
-                let mut i = 0;
-                while i + 1 < values.len() {
-                    regions.push((values[i] as u64, values[i + 1] as u64));
-                    i += 2;
-                }
-            } else if data.len() >= 12 {
-                let addr = u64::from_be_bytes([
-                    data[0], data[1], data[2], data[3],
-                    data[4], data[5], data[6], data[7],
-                ]);
-                let size = u64::from(u32::from_be_bytes([
-                    data[8], data[9], data[10], data[11],
-                ]));
-                regions.push((addr, size));
-            }
-            regions
-        }
-        device_tree_parser::PropertyValue::U64Array(data) => {
-            let mut regions = Vec::new();
-            for chunk in data.chunks_exact(16) {
-                if chunk.len() >= 16 {
-                    let addr = u64::from_be_bytes([
-                        chunk[0], chunk[1], chunk[2], chunk[3],
-                        chunk[4], chunk[5], chunk[6], chunk[7],
-                    ]);
-                    let size = u64::from_be_bytes([
-                        chunk[8], chunk[9], chunk[10], chunk[11],
-                        chunk[12], chunk[13], chunk[14], chunk[15],
-                    ]);
-                    regions.push((addr, size));
-                }
-            }
-            regions
-        }
-        _ => vec![],
+/// Bus addressing for children of a node (`#address-cells` / `#size-cells` / `ranges`).
+#[derive(Clone, Debug)]
+struct BusContext {
+    address_cells: u32,
+    size_cells: u32,
+    /// `None` = no `ranges` property (identity). `Some([])` = empty `ranges;` (1:1).
+    ranges: Option<Vec<RangeMap>>,
+}
+
+fn cells_u32(node: &device_tree_parser::DeviceTreeNode, name: &str, default: u32) -> u32 {
+    node.prop_u32(name).unwrap_or(default)
+}
+
+fn pack_cells(cells: &[u32]) -> u64 {
+    let mut v = 0u64;
+    for &c in cells {
+        v = (v << 32) | u64::from(c);
     }
+    v
+}
+
+fn bus_context(
+    node: &device_tree_parser::DeviceTreeNode,
+    parent: Option<&BusContext>,
+) -> BusContext {
+    let address_cells = cells_u32(node, "#address-cells", 2);
+    let size_cells = cells_u32(node, "#size-cells", 1);
+    let parent_addr_cells = parent.map(|p| p.address_cells).unwrap_or(2);
+    let ranges = parse_ranges(node, address_cells, parent_addr_cells, size_cells);
+    BusContext {
+        address_cells,
+        size_cells,
+        ranges,
+    }
+}
+
+fn parse_ranges(
+    node: &device_tree_parser::DeviceTreeNode,
+    child_addr_cells: u32,
+    parent_addr_cells: u32,
+    size_cells: u32,
+) -> Option<Vec<RangeMap>> {
+    if !node.has_property("ranges") {
+        return None;
+    }
+    let Some(raw) = node.prop_u32_array("ranges") else {
+        // Empty `ranges;` → 1:1 identity
+        return Some(Vec::new());
+    };
+    if raw.is_empty() {
+        return Some(Vec::new());
+    }
+    let entry = (child_addr_cells + parent_addr_cells + size_cells) as usize;
+    if entry == 0 || raw.len() % entry != 0 {
+        return Some(Vec::new());
+    }
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i + entry <= raw.len() {
+        let child_addr = pack_cells(&raw[i..i + child_addr_cells as usize]);
+        i += child_addr_cells as usize;
+        let parent_addr = pack_cells(&raw[i..i + parent_addr_cells as usize]);
+        i += parent_addr_cells as usize;
+        let size = if size_cells == 0 {
+            0
+        } else {
+            pack_cells(&raw[i..i + size_cells as usize])
+        };
+        i += size_cells as usize;
+        out.push(RangeMap {
+            child_addr,
+            parent_addr,
+            size,
+        });
+    }
+    Some(out)
+}
+
+fn apply_ranges(addr: u64, ranges: &Option<Vec<RangeMap>>) -> u64 {
+    match ranges.as_deref() {
+        None | Some([]) => addr,
+        Some(maps) => {
+            for r in maps {
+                if r.size == 0 {
+                    if addr == r.child_addr {
+                        return r.parent_addr;
+                    }
+                    continue;
+                }
+                if addr >= r.child_addr && addr < r.child_addr.saturating_add(r.size) {
+                    return r.parent_addr + (addr - r.child_addr);
+                }
+            }
+            addr
+        }
+    }
+}
+
+/// Translate a bus-local address through ancestor buses toward CPU physical.
+fn to_cpu_physical(mut addr: u64, ancestors: &[BusContext]) -> u64 {
+    for bus in ancestors {
+        addr = apply_ranges(addr, &bus.ranges);
+    }
+    addr
+}
+
+/// Parse `reg` using the **parent** bus `#address-cells` / `#size-cells` (DT spec).
+pub fn parse_reg_cells(reg: &[u32], address_cells: u32, size_cells: u32) -> Vec<(u64, u64)> {
+    let entry = (address_cells + size_cells) as usize;
+    if entry == 0 || reg.len() < entry {
+        return Vec::new();
+    }
+    let mut regions = Vec::new();
+    let mut i = 0;
+    while i + entry <= reg.len() {
+        let addr = pack_cells(&reg[i..i + address_cells as usize]);
+        let size = if size_cells == 0 {
+            0
+        } else {
+            pack_cells(&reg[i + address_cells as usize..i + entry])
+        };
+        regions.push((addr, size));
+        i += entry;
+    }
+    regions
+}
+
+fn get_reg_translated(
+    node: &device_tree_parser::DeviceTreeNode,
+    parent_bus: &BusContext,
+    ancestors: &[BusContext],
+) -> Vec<(u64, u64)> {
+    let Some(reg) = node.prop_u32_array("reg") else {
+        return Vec::new();
+    };
+    parse_reg_cells(&reg, parent_bus.address_cells, parent_bus.size_cells)
+        .into_iter()
+        .map(|(addr, size)| (to_cpu_physical(addr, ancestors), size))
+        .collect()
 }
 
 fn walk_node(
     node: &device_tree_parser::DeviceTreeNode,
     parent_name: &str,
+    parent_bus: &BusContext,
+    ancestors: &[BusContext],
     mmio_regions: &mut Vec<MmioRegion>,
     irqs: &mut Vec<IrqMap>,
     _clocks: &mut Vec<ClockMap>,
@@ -137,7 +245,7 @@ fn walk_node(
     };
 
     let compat = get_compatible_list(node);
-    let regs = get_reg(node);
+    let regs = get_reg_translated(node, parent_bus, ancestors);
     let interrupts = node.prop_u32_array("interrupts").unwrap_or_default();
 
     for &(addr, size) in &regs {
@@ -197,10 +305,18 @@ fn walk_node(
         }
     }
 
+    // This node as bus for its children.
+    let this_bus = bus_context(node, Some(parent_bus));
+    let mut child_ancestors = Vec::with_capacity(ancestors.len() + 1);
+    child_ancestors.push(this_bus.clone());
+    child_ancestors.extend_from_slice(ancestors);
+
     for child in &node.children {
         walk_node(
             child,
             &full_name,
+            &this_bus,
+            &child_ancestors,
             mmio_regions,
             irqs,
             _clocks,
@@ -209,5 +325,50 @@ fn walk_node(
             spi_buses,
             dma_controllers,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_reg_two_cells_gicv3_style() {
+        // #address-cells=<2> #size-cells=<2>
+        // GICD 0x12000000/0x20000, GICR 0x12040000/0x100000
+        let reg = [
+            0u32, 0x1200_0000, 0, 0x2_0000, 0, 0x1204_0000, 0, 0x10_0000,
+        ];
+        let regions = parse_reg_cells(&reg, 2, 2);
+        assert_eq!(
+            regions,
+            vec![(0x1200_0000, 0x2_0000), (0x1204_0000, 0x10_0000)]
+        );
+    }
+
+    #[test]
+    fn parse_reg_one_cell_pairs() {
+        let reg = [0x4001_3800u32, 0x400, 0x4001_3c00, 0x400];
+        let regions = parse_reg_cells(&reg, 1, 1);
+        assert_eq!(
+            regions,
+            vec![(0x4001_3800, 0x400), (0x4001_3c00, 0x400)]
+        );
+    }
+
+    #[test]
+    fn naive_pair_parse_would_misread_gic() {
+        // Documents the old bug: treating 2+2 cells as (addr,size) pairs of u32.
+        let reg = [
+            0u32, 0x1200_0000, 0, 0x2_0000, 0, 0x1204_0000, 0, 0x10_0000,
+        ];
+        let mut naive = Vec::new();
+        let mut i = 0;
+        while i + 1 < reg.len() {
+            naive.push((reg[i] as u64, reg[i + 1] as u64));
+            i += 2;
+        }
+        assert_eq!(naive[0], (0, 0x1200_0000)); // wrong "address"
+        assert_ne!(naive[0].0, 0x1200_0000);
     }
 }

@@ -1,10 +1,23 @@
 # Changelog
 
-Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`, `v1.6.1-rc`, `v1.6.2-rc`, `v1.6.3-rc`.
+Formato aproximado [Keep a Changelog](https://keepachangelog.com/). Tags: `v0.3.0-rc`, `v0.4.0-rc`, `v0.4.0`, `v0.5.0-rc`, `v0.5.0`, `v0.6.0-rc`, `v0.6.0`, `v0.7.0-rc`, `v0.7.0`, `v0.8.0-rc`, `v0.8.0`, `v0.9.0-rc`, `v0.9.0`, `v1.0.0-rc`, `v1.0.0`, `v1.1.0-rc`, `v1.2.0-rc`, `v1.2.0`, `v1.3.0-rc`, `v1.4.0-rc`, `v1.5.0-rc`, `v1.6.0-rc`, `v1.6.1-rc`, `v1.6.2-rc`, `v1.6.3-rc`, `v1.7.0-rc`.
 
 ## [Unreleased]
 
 ### Added
+- (vazio — ver `v1.7.0-rc`)
+
+## [v1.7.0-rc] — 2026-07-18
+
+### Added
+- **Path to v1.7** (`base-vault/27`) — decompilação/recompilação estática x86 → multi-ISA via SIR
+- Crate **`base-recomp`** — lift subset x86-32 → SIR → emit (`x86_64`/`amd64`, ARM, AArch64, MIPS, PPC, SPARC, SH-2/SH-4)
+- CLI `base recomp lift|file|targets|roundtrip|assemble-arm` — honesty: `static_recomp_complete: false` · `win32_abi_complete: false`
+- R2: goldens x86_64 + host roundtrip (`as`/`cc`)
+- R3: goldens ARM + AArch64 + assemble-only ARM (`arm-none-eabi-as`)
+- R4: goldens MIPS + PowerPC + SPARC
+- R5: goldens SuperH SH-2/SH-4 (Saturn/Dreamcast class banners)
+- Docs [STATIC_RECOMP.md](docs/STATIC_RECOMP.md)
 - Crate **`base-reason`** — QRM + belief graph + hypothesis set + triad gate + session strengthen/forget (≠ Transformer)
 - CLI `base reason report` / `base reason g35` — HW atlas → reason report + receipt draft (`lab_assist`)
 - Manifesto [docs/PLATFORM_RE.md](docs/PLATFORM_RE.md) · piloto [examples/pilot_moto_g35/REASONING.md](examples/pilot_moto_g35/REASONING.md)

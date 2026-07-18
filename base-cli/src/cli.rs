@@ -5,8 +5,8 @@ use std::path::PathBuf;
 #[command(name = "base", version, about = "B.A.S.E. — Behavioral ASIC Synthesis Engine")]
 #[command(long_about = "Transform hardware behavior into new PCB + firmware.
   Pipeline: analyze → synth → pcb → fw → check → evolve
-  Assist: paleo · port · virt · reason (QRM/belief/triad)
-  Honesty: generates_os=false · auto_fix_complete=false by default")]
+  Assist: paleo · port · virt · reason · recomp (static x86→SIR)
+  Honesty: generates_os=false · auto_fix_complete=false · static_recomp_complete=false")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -325,6 +325,69 @@ pub enum Command {
     Reason {
         #[command(subcommand)]
         action: ReasonCommand,
+    },
+
+    /// Static recomp: x86 → SIR → multi-ISA (≠ Wine · ≠ Win32 complete · ≠ runs any PE)
+    Recomp {
+        #[command(subcommand)]
+        action: RecompCommand,
+    },
+}
+
+/// `base recomp` — Path to v1.7 static recompilation
+#[derive(Subcommand)]
+pub enum RecompCommand {
+    /// Lift x86-32 bytes (hex) → SIR JSON
+    Lift {
+        /// Hex byte string, e.g. `90c3` or `B801000000C3`
+        #[arg(long)]
+        hex: String,
+
+        /// Function / module name
+        #[arg(long, default_value = "fn0")]
+        name: String,
+
+        /// Also emit assembly for this target (x86_64|amd64|arm|arm64|mips|ppc|sparc|sh2|sh4)
+        #[arg(long)]
+        target: Option<String>,
+    },
+
+    /// Lift a raw binary file (flat .text) → SIR + optional emit
+    File {
+        /// Path to raw x86-32 bytes
+        input: PathBuf,
+
+        #[arg(long, default_value = "fn0")]
+        name: String,
+
+        #[arg(long)]
+        target: Option<String>,
+    },
+
+    /// List canonical target ISAs (amd64 ≡ x86_64)
+    Targets,
+
+    /// Host smoke: lift → emit x86_64 → `as`/`cc` → run (expect return in eax)
+    Roundtrip {
+        /// Hex byte string (x86-32 subset, no gaps)
+        #[arg(long)]
+        hex: String,
+
+        #[arg(long, default_value = "fn0")]
+        name: String,
+
+        /// Expected return value (eax)
+        #[arg(long)]
+        expect: u32,
+    },
+
+    /// Cross-assemble ARM emit with `arm-none-eabi-as` (assemble-only; ≠ qemu run)
+    AssembleArm {
+        #[arg(long)]
+        hex: String,
+
+        #[arg(long, default_value = "fn0")]
+        name: String,
     },
 }
 

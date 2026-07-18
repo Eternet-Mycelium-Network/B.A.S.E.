@@ -27,6 +27,10 @@ tags:
 | **Specter Live** | Loop VM instrumentada → EvidenceDb → Ψ em janelas (`base virt`). ≠ OS turnkey. |
 | **SpecterProbe** | Pipeline de análise de firmware que alimenta o B.A.S.E. (9 camadas). |
 | **SSA** | Static Single Assignment. Forma de IR onde cada variável é atribuída exatamente uma vez. |
+| **SIR** | Static Intermediate Representation. IR de recompilação estática x86→multi-ISA (`base-recomp`). ≠ BIR. |
+| **Static recomp** | Lift estático + emit por ISA. ≠ Wine · ≠ JIT · `win32_abi_complete: false`. |
+| **amd64** | Alias de **x86_64** — um único backend em `TargetIsa::X86_64`. |
+| **SuperH** | Família Hitachi/Renesas SH-2 (Saturn) / SH-4 (Dreamcast); alvo `TargetIsa::SuperH`. |
 | **Trace** | Sequência temporal de eventos (MMIO reads/writes, IRQs, DMA) capturada de hardware real. |
 | **RTL** | Register Transfer Level. Descrição de hardware em Verilog/VHDL. |
 | **GDSII** | Formato de arquivo padrão para fabricação de chips. |

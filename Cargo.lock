@@ -194,6 +194,7 @@ dependencies = [
  "base-pcb",
  "base-port",
  "base-reason",
+ "base-recomp",
  "base-virt",
  "base-vm",
  "clap 4.6.1",
@@ -297,6 +298,17 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+]
+
+[[package]]
+name = "base-recomp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base-core",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

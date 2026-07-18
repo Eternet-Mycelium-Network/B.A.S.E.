@@ -1,0 +1,17 @@
+[package]
+name = "base-recomp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "B.A.S.E. static x86 → multi-ISA recompilation via SIR (≠ Wine · ≠ Win32 complete)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+thiserror = "2"
+base-core = { path = "../base-core" }
+
+[lib]
+name = "base_recomp"
+path = "src/lib.rs"

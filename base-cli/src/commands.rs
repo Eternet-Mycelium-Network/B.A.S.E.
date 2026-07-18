@@ -28,7 +28,9 @@ use base_evolve::analyzer::BottleneckAnalyzer;
 use base_evolve::tradeoff::TradeoffAnalyzer;
 use base_evolve::migrate::MigrationPlanner;
 
-use crate::cli::{Command, HilCommand, PaleoCommand, PortCommand, ReasonCommand, VirtCommand};
+use crate::cli::{
+    Command, HilCommand, PaleoCommand, PortCommand, ReasonCommand, RecompCommand, VirtCommand,
+};
 
 pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
     match cmd {
@@ -148,6 +150,9 @@ pub fn execute(cmd: &Command, output: &Path) -> Result<()> {
         }
         Command::Reason { action } => {
             handle_reason(action, output)?;
+        }
+        Command::Recomp { action } => {
+            handle_recomp(action, output)?;
         }
     }
     Ok(())
@@ -1245,7 +1250,7 @@ fn handle_hil(action: &HilCommand, output: &Path) -> Result<()> {
                         "[HIL][EXPERIMENTAL] --mock-flash → dry-run only (NO silicon)"
                     );
                     base_hil::HilAgent::with_mock_flash(base_hil::ProbePresence::Detected)
-                } else {
+    } else {
                     tracing::warn!(
                         "[HIL][EXPERIMENTAL] --mock-detected → Detected offline (no USB)"
                     );
@@ -2698,4 +2703,113 @@ fn handle_reason(action: &ReasonCommand, output: &Path) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn handle_recomp(action: &RecompCommand, output: &Path) -> Result<()> {
+    use base_recomp::honesty;
+    use base_recomp::target::TargetIsa;
+
+    fs::create_dir_all(output)?;
+    tracing::info!("{}", honesty::BANNER);
+
+    match action {
+        RecompCommand::Targets => {
+            println!("canonical targets (amd64 ≡ x86_64):");
+            for t in TargetIsa::all_canonical() {
+                println!("  {}", t.as_str());
+            }
+        }
+        RecompCommand::Lift { hex, name, target } => {
+            let bytes = parse_hex_bytes(hex)?;
+            write_recomp_artifacts(&bytes, name, target.as_deref(), output)?;
+        }
+        RecompCommand::File {
+            input,
+            name,
+            target,
+        } => {
+            let bytes = fs::read(input)?;
+            write_recomp_artifacts(&bytes, name, target.as_deref(), output)?;
+        }
+        RecompCommand::Roundtrip { hex, name, expect } => {
+            let bytes = parse_hex_bytes(hex)?;
+            let work = output.join("roundtrip_x86_64");
+            let bin = base_recomp::roundtrip::smoke_x86_64(&bytes, name, *expect, &work)?;
+            tracing::info!("roundtrip OK → {} (expect eax={})", bin.display(), expect);
+            let report = format!(
+                "# R2 roundtrip x86_64\n\n- expect: {expect}\n- harness: `{}`\n\n{}\n",
+                bin.display(),
+                base_recomp::honesty::markdown_section()
+            );
+            fs::write(work.join("ROUNDTRIP_REPORT.md"), report)?;
+        }
+        RecompCommand::AssembleArm { hex, name } => {
+            let bytes = parse_hex_bytes(hex)?;
+            let work = output.join("assemble_arm");
+            let obj = base_recomp::roundtrip::assemble_arm(&bytes, name, &work)?;
+            tracing::info!("ARM assemble OK → {}", obj.display());
+            let report = format!(
+                "# R3 ARM assemble\n\n- object: `{}`\n- note: assemble-only (no qemu)\n\n{}\n",
+                obj.display(),
+                base_recomp::honesty::markdown_section()
+            );
+            fs::write(work.join("ASSEMBLE_ARM_REPORT.md"), report)?;
+        }
+    }
+    Ok(())
+}
+
+fn write_recomp_artifacts(
+    bytes: &[u8],
+    name: &str,
+    target: Option<&str>,
+    output: &Path,
+) -> Result<()> {
+    use base_recomp::emit::emit_module;
+    use base_recomp::lift::lift_x86_32;
+    use base_recomp::target::TargetIsa;
+
+    let module = lift_x86_32(bytes, name)?;
+    let sir_path = output.join("recomp.sir.json");
+    fs::write(&sir_path, serde_json::to_string_pretty(&module)?)?;
+    tracing::info!(
+        "SIR written {} (gaps={})",
+        sir_path.display(),
+        module.lift_gaps
+    );
+
+    let md = format!(
+        "# Static recomp lift\n\n- name: `{name}`\n- bytes: {}\n- gaps: {}\n\n{}\n",
+        bytes.len(),
+        module.lift_gaps,
+        base_recomp::honesty::markdown_section()
+    );
+    fs::write(output.join("RECOMP_REPORT.md"), md)?;
+
+    if let Some(t) = target {
+        let isa: TargetIsa = t.parse()?;
+        let asm = emit_module(&module, isa);
+        let asm_path = output.join(format!("emit_{}.s", isa.as_str()));
+        fs::write(&asm_path, asm)?;
+        tracing::info!("ASM written {}", asm_path.display());
+    }
+    Ok(())
+}
+
+fn parse_hex_bytes(hex: &str) -> Result<Vec<u8>> {
+    let clean: String = hex
+        .chars()
+        .filter(|c| c.is_ascii_hexdigit())
+        .collect();
+    if clean.len() % 2 != 0 {
+        anyhow::bail!("hex length must be even (got {} digits)", clean.len());
+    }
+    let mut out = Vec::with_capacity(clean.len() / 2);
+    for i in (0..clean.len()).step_by(2) {
+        out.push(u8::from_str_radix(&clean[i..i + 2], 16)?);
+    }
+    if out.is_empty() {
+        anyhow::bail!("empty hex input");
+    }
+    Ok(out)
 }
